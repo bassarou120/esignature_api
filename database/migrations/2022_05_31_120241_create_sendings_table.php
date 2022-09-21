@@ -32,7 +32,7 @@ class CreateSendingsTable extends Migration
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('id_document')->references('id')->on('documents')->onDelete('cascade');
             $table->foreign('id_type_signature')->references('id')->on('type__signatures')->onDelete('cascade');
-            $table->foreign('statut')->references('id')->on('statues')->onDelete('cascade');
+            $table->foreign('statut')->references('id')->on('statuses')->onDelete('cascade');
         });
     }
 
