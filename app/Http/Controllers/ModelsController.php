@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use App\Http\Resources\Sending as SendingResource;
 
 
-class ModelsController extends BaseController
+class ModelsController extends Controller
 {
     /**
      * Display a listing of the resource.

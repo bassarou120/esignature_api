@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
-class MemberController extends BaseController
+class MemberController extends Controller
 {
     /**
      * Display a listing of the resource.

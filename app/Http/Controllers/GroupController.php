@@ -11,7 +11,7 @@ use App\Http\Resources\Group as GroupResource;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 
-class GroupController extends BaseController
+class GroupController extends Controller
 {
     /**
      * Display a listing of the resource.

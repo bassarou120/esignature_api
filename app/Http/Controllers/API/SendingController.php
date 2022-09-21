@@ -160,15 +160,6 @@ class SendingController extends BaseController
 
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        return view('user_front.sending.create');
-    }
 
     private function custom_copy($src, $dst)
     {
@@ -702,7 +693,6 @@ class SendingController extends BaseController
 
         $signataires_to_delete = Signataire::where('type','Signataire')
             ->where('id_sending',$request->id_sending);
-
 
         $count = $signataires_to_delete->get()->count();
         $signataires_to_delete->delete();

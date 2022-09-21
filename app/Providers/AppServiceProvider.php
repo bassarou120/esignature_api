@@ -26,10 +26,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-//        $sendingStatues = Status::all()->toArray();
-//        foreach ($sendingStatues as $statut) {
-//            if (!defined($statut['name'])) define($statut['name'], $statut['id']);
-//        }
+        $sendingStatues = Status::all()->toArray();
+        foreach ($sendingStatues as $statut) {
+            if (!defined($statut['name'])) define($statut['name'], $statut['id']);
+        }
         if($this->app->environment('production')) {
             URL::forceScheme('https');
         }

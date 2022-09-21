@@ -24,7 +24,7 @@ use App\Http\Resources\StatutSending as StatutSendingResource;
 use PHPMailer\PHPMailer\PHPMailer;
 use Spatie\PdfToImage\Pdf;
 
-class SendingController extends BaseController
+class SendingController extends Controller
 {
     /**
      * Display a listing of the resource.

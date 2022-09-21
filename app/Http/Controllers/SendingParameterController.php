@@ -7,7 +7,7 @@ use App\Models\Sending_Parameter;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
-class SendingParameterController extends BaseController
+class SendingParameterController extends Controller
 {
     /**
      * Display a listing of the resource.
