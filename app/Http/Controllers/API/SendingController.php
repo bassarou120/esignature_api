@@ -25,7 +25,7 @@ use App\Http\Resources\StatutSending as StatutSendingResource;
 use PHPMailer\PHPMailer\PHPMailer;
 use PhpOffice\PhpSpreadsheet\Calculation\MathTrig\Sign;
 use Psy\Util\Json;
-use Spatie\PdfToImage\Pdf;
+use Spatie\PdfToImage\Pdf as Spatie;
 
 class SendingController extends BaseController
 {
@@ -255,7 +255,7 @@ class SendingController extends BaseController
                // $doc->move(public_path('documents'), $cp_name);
 
                 //$pdf = new Spatie\PdfToImage\Pdf();
-                $pdf = new Pdf(public_path('documents') . '/' . $imageName1);
+                $pdf = new Spatie(public_path('documents') . '/' . $imageName1);
                 $nbre_page = $pdf->getNumberOfPages();
                 $preview_name = $title . time();
                 $t = time();
