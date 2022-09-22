@@ -91,9 +91,9 @@ class Authentification extends BaseController
             $options,
             $encryption_iv
         );
-
+        $t = base64_encode($encryption);
         Notification::route('mail', $user->email)
-            ->notify(new NewRegistration($encryption));
+            ->notify(new NewRegistration($t));
 
         return $this->sendResponse(new UserResource($user), 'User register successfully.');
     }
@@ -104,8 +104,8 @@ class Authentification extends BaseController
         $options = 0;
         $decryption_iv = '1234567891011121';
         $decryption_key = "EsignDineCode";
-        $email=openssl_decrypt ($token, $ciphering,
-            $decryption_key, $options, $decryption_iv);
+        $email=base64_decode(openssl_decrypt ($token, $ciphering,
+            $decryption_key, $options, $decryption_iv));
 
         $user =  User::where('email',$email)->first();
         if(!is_null($user)){

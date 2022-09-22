@@ -43,16 +43,12 @@ Route::post('login', [Authentification::class, 'login']);
 Route::post('register', [Authentification::class, 'register']);
 Route::post('password/forgot-password', [Authentification::class, 'sendResetLinkResponse'])->name('passwords.sent.user');
 Route::post('password/reset', [Authentification::class, 'sendResetResponse'])->name('passwords.reset.user');
-Route::get('activateacount/{token?}', [Authentification::class, 'activate_account'])->name('user.activateaccount');
-//Route::get('/activateacount/{path?}', function ($path) {
-//
-//    if(Auth::check()==false){
-//        return redirect('/');
-//    }
-//    else{
-//        return view('home');
-//    }
-//
+Route::get('activateacount/{token}', [Authentification::class, 'activate_account'])->name('user.activateaccount');
+//Route::get('activateacount/{token?}', function ($token) {
+//   // echo $token;
+//    $a = base64_encode('a/');
+//  echo  $a;
+//  echo  base64_decode($a);
 //});
 
 
