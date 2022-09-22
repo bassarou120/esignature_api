@@ -108,9 +108,6 @@ class Authentification extends BaseController
 //        $email=base64_decode(openssl_decrypt ($token, $ciphering,
 //            $decryption_key, $options, $decryption_iv));
         $email=base64_decode($token);
-
-        dd($email);
-
         $user =  User::where('email',$email)->first();
         if(!is_null($user)){
             $user->email_verified_at =date('Y-m-d H:i:s');
