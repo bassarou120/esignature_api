@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Resources\User as UserResource;
 
@@ -91,7 +92,7 @@ class Authentification extends BaseController
             $options,
             $encryption_iv
         );
-        $t = base64_encode($encryption);
+        $t = base64_encode($request->email);
         Notification::route('mail', $user->email)
             ->notify(new NewRegistration($t));
 
@@ -104,8 +105,9 @@ class Authentification extends BaseController
         $options = 0;
         $decryption_iv = '1234567891011121';
         $decryption_key = "EsignDineCode";
-        $email=base64_decode(openssl_decrypt ($token, $ciphering,
-            $decryption_key, $options, $decryption_iv));
+//        $email=base64_decode(openssl_decrypt ($token, $ciphering,
+//            $decryption_key, $options, $decryption_iv));
+        $email=base64_decode($token);
 
         dd($email);
 
@@ -113,8 +115,8 @@ class Authentification extends BaseController
         if(!is_null($user)){
             $user->email_verified_at =date('Y-m-d H:i:s');
             $user ->save();
-
-            return $this->sendResponse([], 'Account activated');
+            return Redirect::to(env('FRONT_URL').'/login');
+            //return $this->sendResponse([], 'Account activated');
         }
         else{
            return  $this->sendError('Unknown email adress',[]);
