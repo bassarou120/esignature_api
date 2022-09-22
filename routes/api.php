@@ -191,6 +191,7 @@ Route::group( ['middleware' => ['auth:user-api','scopes:user','cors', 'json.resp
         ]
     ]);
 
+    Route::post('/logout', [Authentification::class, 'logout'])->name('api.logout.user');
 
 });
 
