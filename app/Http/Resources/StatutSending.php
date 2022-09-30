@@ -24,7 +24,7 @@ class StatutSending extends JsonResource
                 $this->signataires->find($this->id_signataire)
             ],
             'statuts' =>[
-                $this->statuts->find($this->statut)
+                $this->statuts->find($this->id_statut)
             ],
             'created_at' => c::createFromFormat('Y-m-d H:i:s', $this->created_at)->format('d/m/Y H:i:s') ,
             'updated_at' => c::createFromFormat('Y-m-d H:i:s', $this->updated_at)->format('d/m/Y H:i:s') ,

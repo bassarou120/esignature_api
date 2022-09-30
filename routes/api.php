@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\Authentification;
 use App\Http\Controllers\API\GroupMemberController;
+use App\Http\Controllers\API\MailerController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\DocumentController;
@@ -32,6 +33,7 @@ use Illuminate\Support\Facades\Auth;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+Route::post("send-email", [MailerController::class, "composeEmail"])->name("send-email");
 
 //Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 //    return $request->user();
@@ -156,7 +158,7 @@ Route::group( ['middleware' => ['auth:user-api','scopes:user','cors', 'json.resp
             'destroy' => 'user.sendings.delete',
         ]
     ]);
-    Route::get('sendings/bysignataire/{id_signataire?}', [SendingController::class, 'getSendingWidgetBySignataire'])->name('user.sendings.widget.signataire');
+    Route::get('sendings/bysignataire/{id_sending}/{id_signataire}', [SendingController::class, 'getSendingWidgetBySignataire'])->name('user.sendings.widget.signataire');
     Route::get('sendings/{id_user}/user/{typesignature?}', [SendingController::class, 'getSendingByUser'])->name('user.sendings.byuser');
     Route::get('sendings/get/top/{id_user}/user', [SendingController::class, 'getTopPendingSending'])->name('user.sendings.byuser.top.docsigned');
     Route::post('sendings/confirm/model/registration/{sending}', [SendingController::class, 'saveModelRegistration'])->name('user.sendings.confirm.register.model');
@@ -170,10 +172,10 @@ Route::group( ['middleware' => ['auth:user-api','scopes:user','cors', 'json.resp
     Route::get('sendings/get/all/cc/{id}', [SendingController::class, 'sending_cc'])->name('user.sendings.cc');
     Route::get('sendings/mail/opened/{id_sending}/{id_signataire}', [SendingController::class, 'mail_opened'])->name('user.sendings.mailopened');
     Route::get('sendings/doc/opened/{id_sending}/{id_signataire}', [SendingController::class, 'doc_opened'])->name('user.sendings.docopened');
-    Route::get('sendings/doc/signed/{id_sending}/{id_signataire}', [SendingController::class, 'doc_signed'])->name('user.sendings.docsigned');
+    Route::put('sendings/doc/signed', [SendingController::class, 'doc_signed'])->name('user.sendings.docsigned');
     Route::put('sendings/add/widget/{id_sending}', [SendingController::class, 'addSendingWidget'])->name('user.sendings.addwidget');
     Route::put('sendings/add/signataires/{id_sending}', [SendingController::class, 'addSendingSignataire'])->name('user.sendings.addsignataire');
-
+    Route::put('sendings/add/signataires/answer', [SendingController::class, 'addSignataireAnswer'])->name('user.sendings.addsignataireanswer');
 
     Route::apiResource('report', ReportIssuesController::Class, [
         'names' => [

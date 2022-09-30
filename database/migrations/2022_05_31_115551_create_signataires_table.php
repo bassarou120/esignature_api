@@ -15,12 +15,15 @@ class CreateSignatairesTable extends Migration
     {
         Schema::create('signataires', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('id_sending');
             $table->string('name');
             $table->string('email');
             $table->enum('type',['Signataire','Validataire','CC']);
             $table->json('widget')->nullable();
             $table->json('signataire_answers')->nullable();
             $table->timestamps();
+            $table->foreign('id_sending')->references('id')->on('sendings')->onDelete('cascade');
+
         });
     }
 

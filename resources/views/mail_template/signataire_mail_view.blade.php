@@ -292,7 +292,7 @@
         <!-- BEGIN BODY -->
         <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: auto;">
             <tr>
-                <img src="/sendings/mail/opened/[$id_sending]/[$id_signataire]" alt="" href="" style="display: none">
+                <img src="{{env('APP_URL')}}/api/sendings/mail/opened/[$id_sending]/[$id_signataire]" alt="" href="" style="display: none">
 
                 <td valign="top" class="bg_white" style="padding: 1em 2.5em 0 2.5em;">
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
@@ -318,9 +318,9 @@
                         <tr>
                             <td style="text-align: center;">
                                 <div class="text-author">
-                                    <img src="https://data.unhcr.org/images/documents/big_4cda85d892a5c0b5dd63b510a9c83e9c9d06e739.jpg" alt="" style="width: 100px; max-width: 600px; height: auto; margin: auto; display: block;">
+                                    <img src="{{env('APP_URL')}}/previews/$preview" alt="" style="width: 100px; max-width: 600px; height: auto; margin: auto; display: block;">
                                     <h3 class="name">[$doc_title]</h3>
-                                    <p><a href="/sendings/doc/opened/[$id_sending]/[$id_signataire]" class="btn btn-primary">Signer maintenant</a></p>
+                                    <p><a href="{{env('APP_URL')}}/api/sendings/doc/opened/[$id_sending]/[$id_signataire]" class="btn btn-primary">Signer maintenant</a></p>
 
                                 </div>
                             </td>

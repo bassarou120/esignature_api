@@ -23,6 +23,8 @@ class Signataire extends JsonResource
             'email' => $this->email,
             'name' => $this->name,
             'type' => $this->type,
+            'widget' => $this->widget,
+            'signataire_answer' => $this->signataire_answer,
             'created_at' => c::createFromFormat('Y-m-d H:i:s', $this->created_at)->format('d/m/Y H:i:s') ,
             'updated_at' => c::createFromFormat('Y-m-d H:i:s', $this->updated_at)->format('d/m/Y H:i:s') ,
         ];

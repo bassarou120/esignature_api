@@ -8,7 +8,6 @@ function reformateDate($date){
     $e = explode(' ',$date);
 
     if(isset($e[0])){
-
         $date_part = $e[0];
         $inter = explode('-', $date_part);
         $newdate=$inter[2].'/'.$inter[1].'/'.$inter[0];
@@ -102,6 +101,8 @@ function  send_mail($data){
             $mail->Body    = $data['view'];
         }
 
+        //$mail->Body    = 'Test';
+
         // $mail->AltBody = plain text version of email body;
 
         if( !$mail->send() ) {
@@ -109,7 +110,6 @@ function  send_mail($data){
             return false;
         }
         else {
-
             \Log::info("Cron is working fine!");
             return true;
         }

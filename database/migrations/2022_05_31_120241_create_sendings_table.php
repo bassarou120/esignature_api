@@ -28,6 +28,7 @@ class CreateSendingsTable extends Migration
             $table->integer('remember')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->boolean('is_config')->default('0');
+            $table->boolean('is_registed')->default('0');
             $table->timestamps();
             $table->foreign('created_by')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('id_document')->references('id')->on('documents')->onDelete('cascade');
