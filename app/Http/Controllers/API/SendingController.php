@@ -17,12 +17,14 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Resources\Sending as SendingResource;
 use App\Http\Resources\Signataire as SignataireResource;
 use App\Http\Resources\StatutSending as StatutSendingResource;
+use Lcobucci\JWT\Signer;
 use PHPMailer\PHPMailer\PHPMailer;
 use PhpOffice\PhpSpreadsheet\Calculation\MathTrig\Sign;
 use Psy\Util\Json;
@@ -345,20 +347,22 @@ class SendingController extends BaseController
         return $this->sendResponse(new SendingResource($sending), 'Sending retrieved successfully.');
     }
 
-//    private function is_in_array($array,$val){
-//       foreach ($array as $a){
-//           if($a)
-//       }
-//    }
-
 
     public function sending_signataire_statut($id)
     {
-        $signataire_statut = Statut_Sending::join('signataires', 'statut__sendings.id_signataire', '=', 'signataires.id')
+       /* $signataire_statut = Statut_Sending::join('signataires', 'statut__sendings.id_signataire', '=', 'signataires.id')
             ->join('statuses', 'statut__sendings.id_statut', '=', 'statuses.id')
             ->where('statut__sendings.id_sending', $id)
             ->where('signataires.type', 'Signataire')
             ->whereRaw('statut__sendings.id IN (SELECT MAX(statut__sendings.id ) FROM statut__sendings GROUP BY statut__sendings.id_signataire)')
+            ->get(['signataires.id','signataires.name','signataires.email','statuses.name as statut','statut__sendings.created_at']);*/
+
+        $available_statut =['ENVOYER','EMAIL_REMIT','OPENED_EMAIL_MESSAGE','OUVRIR','SIGNER'];
+        $signataire_statut = Statut_Sending::join('signataires', 'statut__sendings.id_signataire', '=', 'signataires.id')
+            ->join('statuses', 'statut__sendings.id_statut', '=', 'statuses.id')
+            ->where('statut__sendings.id_sending', $id)
+            ->where('signataires.type', 'Signataire')
+            ->whereIn('statuses.name',$available_statut )
             ->get(['signataires.id','signataires.name','signataires.email','statuses.name as statut','statut__sendings.created_at']);
 
         if(!is_null($signataire_statut)){
@@ -386,27 +390,12 @@ class SendingController extends BaseController
                    }
             }
         }
-        //
-        /* $signataire_statut = DB::select(
-             'SELECT statut__sendings.* ,signataires.*, statuses.*
-                    FROM statut__sendings
-                    inner join signataires
-                    on statut__sendings.id_signataire=signataires.id
-                    inner join statuses
-                    on statut__sendings.id_statut=statuses.id
-                    WHERE statut__sendings.id_sending=:id
-                    AND statut__sendings.id
-                    IN (SELECT MAX(statut__sendings.id ) FROM statut__sendings GROUP BY statut__sendings.id_signataire)',
-                 [
-                     'id'=>$id
-                 ]
-              );*/
+
         return response()->json([
             'message'=>'Statut retrieve successfully',
             'data'=>$statut_signataire,
             'success'=>true
         ]);
-       // return $this->sendResponse(StatutSendingResource::collection($signataire_statut), 'Sending statues retrieved successfully.');
     }
 
     public function sending_validataire_statut($id)
@@ -420,6 +409,7 @@ class SendingController extends BaseController
 
         return $this->sendResponse(StatutSendingResource::collection($signataire_statut), 'Sending validataire statues retrieved successfully.');
     }
+
 
     public function search($value)
     {
@@ -464,7 +454,6 @@ class SendingController extends BaseController
      */
     public function update(Request $request, Sending $sending)
     {
-
         $input = $request->all();
 
         $validator = Validator::make($input, [
@@ -542,15 +531,20 @@ class SendingController extends BaseController
 
         $save_signataire = [];
         foreach ($signataires_array as $sa) {
-            // $save_signataire = Signataire::insert($signataires_array);
-            $save = Signataire::create($sa);
-            // $save_signataire[]=$save->id;
+
+            $si=  Signataire::where('type', 'Signataire')
+                ->where('name', $sa['name'])
+                ->where('id_sending', $request->id)
+                ->first();
+
             array_push($save_signataire, [
-                'id' => $save->id,
+                'id' => $si->id,
                 'name' => $sa['name'],
                 'email' => $sa['email'],
                 'type' => $sa['type'],
             ]);
+            $si->email = $sa['email'];
+            $si->save();
         }
         // save to contact table
 
@@ -560,7 +554,7 @@ class SendingController extends BaseController
 
 
         //register statut sending by signataire
-        $statut_sending = [];
+/*        $statut_sending = [];
         for ($i = 0; $i < sizeof($save_signataire); $i++) {
             array_push($statut_sending, [
                 'id_sending' => $request->id,
@@ -570,8 +564,7 @@ class SendingController extends BaseController
                 'updated_at' => date('Y-m-d H:i:s'),
             ]);
         }
-
-        $save_statut_sending_by_signataire = Statut_Sending::insert($statut_sending);
+        $save_statut_sending_by_signataire = Statut_Sending::insert($statut_sending);*/
 
 
         // register persons who must receive doc copy
@@ -605,6 +598,7 @@ class SendingController extends BaseController
 
         foreach ($save_signataire as $s) {
             if ($s['type'] == 'Signataire') {
+                $statut_sending =new Statut_Sending;
                 $emailSignataire = new SendSignataireMailJob(
                     [
                         'id_sending' => $request->id,
@@ -620,7 +614,9 @@ class SendingController extends BaseController
                             'sending_expiration' => $doc_id->expiration,
                             'preview' => $doc_info->preview,
                         ]
-                    ]);
+                    ]
+                    //$statut_sending->toArray()
+                );
                 $this->dispatch($emailSignataire);
             } else {
                 $emailValidataire = new SendValidatorMailJob(
@@ -635,22 +631,6 @@ class SendingController extends BaseController
             }
         }
 
-
-//       $r= send_mail([
-//            'id_sending'=>$request->id,
-//            'signataires'=>$signataire_only_array,
-//            'subject'=> $request->objet==null ? 'Signature requise' : $request->objet ,
-//            'view'=> 'signataire_mail_view',
-//            'mail_detail'=>[
-//                'doc_title'=>$doc_info->title,
-//                'sending_auth'=>Auth::user()->name,
-//                'sending_expiration'=>$doc_id->expiration,
-//                'preview'=>$doc_info->preview,
-//            ]
-//
-//        ]);
-//
-//        dd($r);
         // send mail to validator
         // send mail to cc personnes
         //update sending
@@ -769,36 +749,6 @@ class SendingController extends BaseController
         return $this->sendResponse(new SendingResource($sending), 'Signataire updated successfully.');
     }
 
-    public function addSignataireAnswer(Request $request){
-        $input = $request->all();
-
-        $validator = Validator::make($input, [
-            'id_sending' => 'required|numeric',
-            'id_signataire' => 'required|numeric',
-            'answer' => 'required|string',
-            'mobile_info'=>'required|string'
-        ]);
-
-        $fieldNames = array(
-            'id_sending' => 'envois',
-            'id_signataire' => 'signataire',
-            'answer' => 'Réponse',
-            'mobile_info'=>'Mobile info'
-        );
-
-        $validator->setAttributeNames($fieldNames);
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors(), 400);
-        }
-
-        $signataire = Signataire::find($request->id_signataire);
-        $signataire ->signataire_answers = $request->answer;
-        $signataire ->mobile_info = $request->mobile_info;
-
-        $signataire->save();
-
-        return $this->sendResponse(new SendingResource($sending), 'Signataire updated successfully.');
-    }
     /**
      * Remove the specified resource from storage.
      *
@@ -807,10 +757,20 @@ class SendingController extends BaseController
      */
     public function destroy(Sending $sending)
     {
+        $document = Document::find($sending->id_document);
+        $doc_path = 'documents/'.$document->file ;
+        $sp =explode('.pdf',$document->file);
+        $doc_path_copy = 'documents/'.$sp[0].'_copy.pdf' ;
+        $doc_img_path = 'previews/'.explode('/',$document->preview)[0];
+        File::delete(public_path($doc_path));
+        File::delete(public_path($doc_path_copy));
+        File::deleteDirectory(public_path($doc_img_path));
+
         //signataire
         Signataire::where('id_sending', $sending->id)->delete();
         //statut__sendings
         Statut_Sending::where('id_sending', $sending->id)->delete();
+
         $sending->delete();
         return $this->sendResponse([], 'Sending deleted successfully.');
     }
@@ -844,7 +804,7 @@ class SendingController extends BaseController
         $statut = Statut_Sending::create([
             'id_sending' => $id_sending,
             'id_signataire' => $id_signataire,
-            'id_statut' => MAIL_OUVERT
+            'id_statut' => OPENED_EMAIL_MESSAGE
         ]);
         return $this->sendResponse(SignataireResource::collection($statut), 'Sending statut updated successfully.');
     }
@@ -855,7 +815,7 @@ class SendingController extends BaseController
             $statut = Statut_Sending::create([
                 'id_sending' => $id_sending,
                 'id_signataire' => $id_signataire,
-                'id_statut' => DOCUMENT_OUVERT
+                'id_statut' => OUVRIR
             ]);
             if($statut){
                 $url=env('FRONT_URL_REDIRECT').$id_signataire.'/'.$id_sending;
@@ -901,7 +861,7 @@ class SendingController extends BaseController
         $statut = Statut_Sending::create([
             'id_sending' => $request->id_sending,
             'id_signataire' => $request->id_signataire,
-            'id_statut' => DOCUMENT_SIGNER
+            'id_statut' => SIGNER
         ]);
 
         $signataires = Signataire::where('id_sending',$request->id_sending)->get();
@@ -914,7 +874,7 @@ class SendingController extends BaseController
                                                ->orderBy('created_at','DESC')
                                                ->first();
 
-                if($last_statut->id_statut!==DOCUMENT_SIGNER){
+                if($last_statut->id_statut!==SIGNER){
                     $one = $one * 0 ;
                     break;
                 }

@@ -1,6 +1,8 @@
 <?php
 
 
+use App\Models\Statut_Sending;
+use Illuminate\Support\Facades\DB;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -19,7 +21,37 @@ function reformateDate($date){
     }
 }
 
-function  send_mail($data){
+
+function callback($buffer,$data)
+{
+    return  str_replace(
+        array(
+            '[$name]',
+            '[$sending_auth]',
+            '[$doc_title]',
+            '[$sending_expiration]',
+            '$preview',
+            '[$id_sending]',
+            '[$id_signataire]',
+            '[$app_url]',
+            'my_link',
+        ),
+        array(
+            $data['mail_detail']['name'],
+            $data['mail_detail']['sending_auth'],
+            $data['mail_detail']['doc_title'],
+            isset($data['mail_detail']['sending_expiration']) ? 'Vous devriez faire cette action avant le '.$data['mail_detail']['sending_expiration'] : '' ,
+            $data['mail_detail']['preview'],
+            $data['id_sending'],
+            $data['id_signataire'],
+            url(''),
+            url('').'/api/sendings/doc/opened/'.$data['id_sending'].'/'.$data['id_signataire'],
+
+        ),
+        $buffer );
+}
+
+function  send_mail($data,$statut_signataire){
     require base_path("vendor/autoload.php");
     $mail = new PHPMailer(true);     // Passing `true` enables exceptions
     try {
@@ -64,13 +96,12 @@ function  send_mail($data){
                 }
             }
 
-
         $mail->isHTML(true);                // Set email content format to HTML
 
         $mail->Subject = $data['subject'];
 
         if($data['view']=='signataire_mail_view'){
-            $message = str_replace(
+            $mail->Body    = str_replace(
                 array(
                     '[$name]',
                     '[$sending_auth]',
@@ -79,19 +110,23 @@ function  send_mail($data){
                     '$preview',
                     '[$id_sending]',
                     '[$id_signataire]',
+                    '[$app_url]',
+                    'my_link',
                 ),
                 array(
                     $data['mail_detail']['name'],
                     $data['mail_detail']['sending_auth'],
                     $data['mail_detail']['doc_title'],
-                    $data['mail_detail']['sending_expiration'],
+                    isset($data['mail_detail']['sending_expiration']) ? 'Vous devriez faire cette action avant le '.$data['mail_detail']['sending_expiration'] : '' ,
                     $data['mail_detail']['preview'],
                     $data['id_sending'],
                     $data['id_signataire'],
+                    url(''),
+                    url('').'/api/sendings/doc/opened/'.$data['id_sending'].'/'.$data['id_signataire'],
+
                 ),
                 file_get_contents(resource_path('views/mail_template/signataire_mail_view.blade.php'))
             );
-            $mail->Body    = $message;
            // $mail->Body    = get_include_contents( resource_path('views/mail_template/signataire_mail_view.blade.php'),$data['mail_detail']);
         }
         else if($data['view']=='validataire_mail_view'){
@@ -101,22 +136,24 @@ function  send_mail($data){
             $mail->Body    = $data['view'];
         }
 
-        //$mail->Body    = 'Test';
-
-        // $mail->AltBody = plain text version of email body;
-
-        if( !$mail->send() ) {
+        $envois =$mail->send();
+        if($envois==false) {
             \Log::info("Erreur de l'envois du mail");
-            return false;
         }
         else {
-            \Log::info("Cron is working fine!");
-            return true;
+            \Log::info("Mail envoyer");
+
+            DB::table('statut__sendings')->insert([
+                'id_sending' =>  $data['id_sending'],
+                'id_signataire' => $data['id_signataire'],
+                'id_statut' => ENVOYER,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
         }
 
     } catch (Exception $e) {
-
-        return $e;
+        echo $e;
     }
 }
 

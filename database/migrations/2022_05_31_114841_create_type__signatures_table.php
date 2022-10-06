@@ -16,6 +16,7 @@ class CreateTypeSignaturesTable extends Migration
         Schema::create('type__signatures', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('type');
             $table->string('feature');
             $table->timestamps();
         });

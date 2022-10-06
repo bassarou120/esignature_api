@@ -14,6 +14,7 @@ class StatuesSeeder extends Seeder
      */
     public function run()
     {
+
         DB::table('statuses')->insert([
             [
                 'name' => 'EN_COURS',
@@ -46,31 +47,31 @@ class StatuesSeeder extends Seeder
                 'updated_at'      => '2022-07-08 14:23:56',
             ],
             [
-                'name' => 'MAIL_ENVOYER',
+                'name' => 'ENVOYER',
                 'description' => 'E-mail envoyé',
                 'created_at'      => '2022-07-08 14:23:56',
                 'updated_at'      => '2022-07-08 14:23:56',
             ],
             [
-                'name' => 'MAIL_REMIS',
+                'name' => 'EMAIL_REMIT',
                 'description' => 'E-mail remis',
                 'created_at'      => '2022-07-08 14:23:56',
                 'updated_at'      => '2022-07-08 14:23:56',
             ],
             [
-                'name' => 'MAIL_OUVERT',
+                'name' => 'OPENED_EMAIL_MESSAGE',
                 'description' => 'E-mail ouvert',
                 'created_at'      => '2022-07-08 14:23:56',
                 'updated_at'      => '2022-07-08 14:23:56',
             ],
             [
-                'name' => 'DOCUMENT_OUVERT',
+                'name' => 'OUVRIR',
                 'description' => 'Document ouvert',
                 'created_at'      => '2022-07-08 14:23:56',
                 'updated_at'      => '2022-07-08 14:23:56',
             ],
             [
-                'name' => 'DOCUMENT_SIGNER',
+                'name' => 'SIGNER',
                 'description' => 'Document signer',
                 'created_at'      => '2022-07-08 14:23:56',
                 'updated_at'      => '2022-07-08 14:23:56',

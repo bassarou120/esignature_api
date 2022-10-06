@@ -53,6 +53,11 @@ Route::get('activateacount/{token}', [Authentification::class, 'activate_account
 //  echo  base64_decode($a);
 //});
 
+Route::group(['middleware' => ['cors', 'json.response'] ],function(){
+    Route::get('sendings/mail/opened/{id_sending}/{id_signataire}', [SendingController::class, 'mail_opened'])->name('user.sendings.mailopened');
+    Route::get('sendings/doc/opened/{id_sending}/{id_signataire}', [SendingController::class, 'doc_opened'])->name('user.sendings.docopened');
+    Route::put('sendings/doc/signed', [SendingController::class, 'doc_signed'])->name('user.sendings.docsigned');
+});
 
 Route::group( ['middleware' => ['auth:user-api','scopes:user','cors', 'json.response'] ],function(){
     Route::apiResource('users', UserController::Class, [
@@ -170,9 +175,7 @@ Route::group( ['middleware' => ['auth:user-api','scopes:user','cors', 'json.resp
     Route::get('sendings/get/all/signataire/laststatut/{id}', [SendingController::class, 'sending_signataire_statut'])->name('user.sendings.signataire.statut');
     Route::get('sendings/get/all/signataire/{id}', [SendingController::class, 'get_signataire_by_sending'])->name('user.sendings.get.signataire');
     Route::get('sendings/get/all/cc/{id}', [SendingController::class, 'sending_cc'])->name('user.sendings.cc');
-    Route::get('sendings/mail/opened/{id_sending}/{id_signataire}', [SendingController::class, 'mail_opened'])->name('user.sendings.mailopened');
-    Route::get('sendings/doc/opened/{id_sending}/{id_signataire}', [SendingController::class, 'doc_opened'])->name('user.sendings.docopened');
-    Route::put('sendings/doc/signed', [SendingController::class, 'doc_signed'])->name('user.sendings.docsigned');
+    Route::get('sendings/get/all/validataire/laststatut/{id}', [SendingController::class, 'sending_validataire_statut'])->name('user.sendings.validataire');
     Route::put('sendings/add/widget/{id_sending}', [SendingController::class, 'addSendingWidget'])->name('user.sendings.addwidget');
     Route::put('sendings/add/signataires/{id_sending}', [SendingController::class, 'addSendingSignataire'])->name('user.sendings.addsignataire');
     Route::put('sendings/add/signataires/answer', [SendingController::class, 'addSignataireAnswer'])->name('user.sendings.addsignataireanswer');

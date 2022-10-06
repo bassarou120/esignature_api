@@ -1,15 +1,12 @@
 <!DOCTYPE html>
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
-    <meta charset="utf-8"> <!-- utf-8 works for most cases -->
-    <meta name="viewport" content="width=device-width"> <!-- Forcing initial-scale shouldn't be necessary -->
-    <meta http-equiv="X-UA-Compatible" content="IE=edge"> <!-- Use the latest (edge) version of IE rendering engine -->
-    <meta name="x-apple-disable-message-reformatting">  <!-- Disable auto-scale in iOS 10 Mail entirely -->
-    <title></title> <!-- The title tag shows in email notifications, like Android 4.4. -->
-
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="x-apple-disable-message-reformatting">
+    <title></title>
     <link href="https://fonts.googleapis.com/css?family=Poppins:200,300,400,500,600,700" rel="stylesheet">
-
-    <!-- CSS Reset : BEGIN -->
     <style>
 
         /* What it does: Remove spaces around the email design added by some email clients. */
@@ -43,7 +40,7 @@
 
         /* What it does: Fixes webkit padding issue. */
         table {
-            border-spacing: 0 !important;
+            border-spacing: 0 !important$mes ;
             border-collapse: collapse !important;
             table-layout: fixed !important;
             margin: 0 auto !important;
@@ -113,14 +110,10 @@
 
 
     </style>
-
-    <!-- CSS Reset : END -->
-
-    <!-- Progressive Enhancements : BEGIN -->
     <style>
 
         .primary{
-            background: #17bebb;
+            background: #696CFB;
         }
         .bg_white{
             background: #ffffff;
@@ -145,7 +138,7 @@
         }
         .btn.btn-primary{
             border-radius: 5px;
-            background: #17bebb;
+            background: #696CFB;
             color: #ffffff;
         }
         .btn.btn-white{
@@ -187,7 +180,7 @@
         }
 
         a{
-            color: #17bebb;
+            color: #696CFB;
         }
 
         table{
@@ -198,7 +191,7 @@
             margin: 0;
         }
         .logo h1 a{
-            color: #17bebb;
+            color: #696CFB;
             font-size: 24px;
             font-weight: 700;
             font-family: 'Poppins', sans-serif;
@@ -292,13 +285,12 @@
         <!-- BEGIN BODY -->
         <table align="center" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: auto;">
             <tr>
-                <img src="{{env('APP_URL')}}/api/sendings/mail/opened/[$id_sending]/[$id_signataire]" alt="" href="" style="display: none">
-
                 <td valign="top" class="bg_white" style="padding: 1em 2.5em 0 2.5em;">
                     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
                         <tr>
                             <td class="logo" style="text-align: center;">
                                 <h1><a href="#">E-Signature</a></h1>
+                                <img src="[$app_url]/api/sendings/mail/opened/[$id_sending]/[$id_signataire]" alt="opened"  style="display: none">
                             </td>
                         </tr>
                     </table>
@@ -311,17 +303,22 @@
                             <td style="padding: 0 2.5em; text-align: center; padding-bottom: 3em;">
                                 <div class="text">
                                     <h3> [$name], [$sending_auth] vous a ajouté comme signataire du document [$doc_title].
-                                        Vous devriez faire cette action avant le [$sending_expiration]</h3>
+                                        [$sending_expiration]
+                                    </h3>
                                 </div>
                             </td>
                         </tr>
                         <tr>
                             <td style="text-align: center;">
                                 <div class="text-author">
-                                    <img src="{{env('APP_URL')}}/previews/$preview" alt="" style="width: 100px; max-width: 600px; height: auto; margin: auto; display: block;">
+                                    <img src="[$app_url]/previews/$preview" alt="" style="width: 100px; max-width: 600px; height: auto; margin: auto; display: block;">
                                     <h3 class="name">[$doc_title]</h3>
-                                    <p><a href="{{env('APP_URL')}}/api/sendings/doc/opened/[$id_sending]/[$id_signataire]" class="btn btn-primary">Signer maintenant</a></p>
-
+                                    <p><a href="[$app_url]/api/sendings/doc/opened/[$id_sending]/[$id_signataire]" class="btn btn-primary">Signer maintenant</a></p>
+                                </div>
+                                <div>
+                                    <p class="text-center">Utilisez ce lien si vous ne parvenez pas à cliquer sur le lien:
+                                        <br>my_link
+                                    </p>
                                 </div>
                             </td>
                         </tr>
@@ -379,7 +376,6 @@
             </tr><!-- end: tr -->
             <tr>
                 <td class="bg_light" style="text-align: center;">
-                    <p>No longer want to receive these email? You can <a href="#" style="color: rgba(0,0,0,.8);">Unsubscribe here</a></p>
                 </td>
             </tr>
         </table>
@@ -387,4 +383,5 @@
     </div>
 </center>
 </body>
+
 </html>
