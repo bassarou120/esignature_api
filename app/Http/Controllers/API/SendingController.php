@@ -93,7 +93,6 @@ class SendingController extends BaseController
         }
 
         if($statut!=null){
-
             $sending = Sending::when($type_signature !==null,function($query) use ($statut, $type_signature) {
                 $query->where('id_type_signature', $type_signature);
                 $query->where('statut', $statut);
@@ -103,18 +102,29 @@ class SendingController extends BaseController
                 ->where('register_as_model', 0)
                 ->where('is_config', 1)
                 ->orderBy('sendings.id', 'DESC');
-
-
         }else{
-            $sending = Sending::when($type_signature !==null,function($query) use ($statut, $type_signature) {
-                $query->where('id_type_signature', $type_signature);
-            },function($query) use ($statut) {})
-                ->join('statuses', 'sendings.statut', '=', 'statuses.id')
-                ->where('sendings.statut','<>', ARCHIVER)
-                ->where('created_by', $id_user)
-                ->where('register_as_model', 0)
-                ->where('is_config', 1)
-                ->orderBy('sendings.id', 'DESC');
+
+            if($type_signature != null){
+                $sending = Sending::when($type_signature !==null,function($query) use ($statut, $type_signature) {
+                    $query->where('id_type_signature', $type_signature);
+                },function($query) use ($statut) {})
+                    ->join('statuses', 'sendings.statut', '=', 'statuses.id')
+                    ->where('sendings.statut','<>', ARCHIVER)
+                    ->where('created_by', $id_user)
+                    ->where('register_as_model', 0)
+                    ->where('is_config', 1)
+                    ->orderBy('sendings.id', 'DESC');
+            }
+            else{
+                $sending = Sending::join('statuses', 'sendings.statut', '=', 'statuses.id')
+                    ->where('sendings.statut','<>', ARCHIVER)
+                    ->where('created_by', $id_user)
+                    ->where('register_as_model', 0)
+                    ->where('is_config', 1)
+                    ->orderBy('sendings.id', 'DESC');
+            }
+
+           // return response()->json($sending->get(['sendings.*']));
         }
 
         if($request->search_val){
@@ -122,8 +132,9 @@ class SendingController extends BaseController
                 ->where('documents.title', 'LIKE', '%'.$request->search_val.'%');
         }
 
-        $sending=$sending->get();
-        if ($request->ajax()) {
+        $sending=$sending->get(['sendings.*']);
+
+        /*if ($request->ajax()) {
             $rows = SendingResource::collection($sending);
             return datatables()::of($rows)
                 ->addIndexColumn()
@@ -145,7 +156,7 @@ class SendingController extends BaseController
                 })
                 ->rawColumns(['action'])
                 ->make(true);
-        }
+        }*/
 
         return $this->sendResponse(SendingResource::collection($sending), 'Sending retrieved successfully.');
 
@@ -365,27 +376,36 @@ class SendingController extends BaseController
             ->whereIn('statuses.name',$available_statut )
             ->get(['signataires.id','signataires.name','signataires.email','statuses.name as statut','statut__sendings.created_at']);
 
+
         if(!is_null($signataire_statut)){
             $statut_signataire=[];
             foreach ($signataire_statut as $s){
                 $nom = $s->email.'|'.$s->name;
 
-                if(in_array($nom,array_keys($statut_signataire))){
+                if(!empty(array_keys($statut_signataire)) && in_array($nom,array_keys($statut_signataire))){
                        $old=$statut_signataire[$nom];
-                       $new=[
-                           $old,[
-                               'id'=>$s->id,
-                               'statut'=>$s->statut,
-                               'date'=>c::createFromFormat('Y-m-d H:i:s', $s->created_at)->format('d/m/Y H:i:s')
-                           ]
-                       ];
-                       $statut_signataire[$nom]=$new;
-                   }
-                   else{
-                       $statut_signataire[$nom]=[
+                       array_push($old,[
                            'id'=>$s->id,
                            'statut'=>$s->statut,
                            'date'=>c::createFromFormat('Y-m-d H:i:s', $s->created_at)->format('d/m/Y H:i:s')
+                       ]);
+                    $statut_signataire[$nom]=$old;
+//                       $new=[
+//                           $old,[
+//                               'id'=>$s->id,
+//                               'statut'=>$s->statut,
+//                               'date'=>c::createFromFormat('Y-m-d H:i:s', $s->created_at)->format('d/m/Y H:i:s')
+//                           ]
+//                       ];
+//                       $statut_signataire[$nom]=$new;
+                }
+                   else{
+                       $statut_signataire[$nom]=[
+                           [
+                           'id'=>$s->id,
+                           'statut'=>$s->statut,
+                           'date'=>c::createFromFormat('Y-m-d H:i:s', $s->created_at)->format('d/m/Y H:i:s')
+                           ]
                        ];
                    }
             }
