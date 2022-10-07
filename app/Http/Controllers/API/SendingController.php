@@ -550,6 +550,8 @@ class SendingController extends BaseController
         }
 
         $save_signataire = [];
+        return response()->json($signataires_array);
+
         foreach ($signataires_array as $sa) {
 
             $si=  Signataire::where('type', 'Signataire')
