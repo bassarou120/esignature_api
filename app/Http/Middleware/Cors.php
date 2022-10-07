@@ -24,4 +24,6 @@ class Cors
 
         return $response;
     }
+
+
 }

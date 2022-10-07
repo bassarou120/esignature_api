@@ -474,6 +474,7 @@ class SendingController extends BaseController
      */
     public function update(Request $request, Sending $sending)
     {
+        return response()->json('here');
         $input = $request->all();
 
         $validator = Validator::make($input, [
