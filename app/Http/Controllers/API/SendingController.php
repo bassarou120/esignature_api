@@ -726,11 +726,13 @@ class SendingController extends BaseController
             'id' => 'required|numeric',
             'signataires' => 'required|string',
             'sign_widget' => 'required|string',
+            'police' => 'required|numeric',
         ]);
 
         $fieldNames = array(
             'signataires' => 'Signataires',
-            'sign_widget' => 'Widgets'
+            'sign_widget' => 'Widgets',
+            'police' => 'Police',
         );
 
         $validator->setAttributeNames($fieldNames);
@@ -764,6 +766,7 @@ class SendingController extends BaseController
         $sending = Sending::find($request->id);
         $nbre = $sending->nbre_signataire;
         $sending->nbre_signataire = $nbre -$count + sizeof($sign);
+        $sending->police =$request->police;
         $sending->save();
 
         return $this->sendResponse(new SendingResource($sending), 'Signataire updated successfully.');

@@ -42,6 +42,7 @@ class Sending extends Model
         'register_as_model',
         'is_config',
         'is_registed',
-        'statut'
+        'statut',
+        'police'
     ];
 }

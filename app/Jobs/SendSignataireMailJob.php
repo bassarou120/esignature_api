@@ -78,6 +78,7 @@ class SendSignataireMailJob implements ShouldQueue
                         '[$id_signataire]',
                         '[$app_url]',
                         'my_link',
+                        '$message'
                     ),
                     array(
                         $this->signataires['mail_detail']['name'],
@@ -89,6 +90,8 @@ class SendSignataireMailJob implements ShouldQueue
                         $this->signataires['id_signataire'],
                         env('APP_URL'),
                         env('APP_URL').'/api/sendings/doc/opened/'.$this->signataires['id_sending'].'/'.$this->signataires['id_signataire'],
+                        isset($this->signataires['message']) ? $this->signataires['message']  : '' ,
+
 
                     ),
                     file_get_contents(resource_path('views/mail_template/signataire_mail_view.blade.php'))

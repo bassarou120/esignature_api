@@ -309,6 +309,13 @@
                             </td>
                         </tr>
                         <tr>
+                            <td style="padding: 0 2.5em; text-align: center; padding-bottom: 3em;">
+                                <div class="text">
+                                    <h4> Message de l'auteur : $message</h4>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
                             <td style="text-align: center;">
                                 <div class="text-author">
                                     <img src="[$app_url]/previews/$preview" alt="" style="width: 100px; max-width: 600px; height: auto; margin: auto; display: block;">

@@ -36,6 +36,7 @@ class Sending extends JsonResource
              'register_as_model' => $this->register_as_model,
              'is_config' => $this->is_config,
              'is_registed'=>$this->is_registed,
+             'police'=>$this->police,
              'statut' =>[
                  $this->statues->find($this->statut)
              ],
