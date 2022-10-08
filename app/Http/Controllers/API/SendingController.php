@@ -803,7 +803,6 @@ class SendingController extends BaseController
 
         foreach ($save_signataire as $s) {
             if ($s['type'] == 'Signataire') {
-                return response()->json($request->all());
                 $emailSignataire = new SendSignataireMailJob(
                     [
                         'id_sending' => $request->id,
@@ -821,6 +820,7 @@ class SendingController extends BaseController
                         ]
                     ]
                 );
+                return response()->json($request->all());
                 $this->dispatch($emailSignataire);
             } else {
                 $emailValidataire = new SendValidatorMailJob(
