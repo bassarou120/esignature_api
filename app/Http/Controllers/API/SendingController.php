@@ -671,6 +671,8 @@ class SendingController extends BaseController
     }
 
     public function addFinaliseConfiguration(Request $request, Sending $sending){
+         return response()->json($request->all());
+
         $input = $request->all();
 
         $validator = Validator::make($input, [
