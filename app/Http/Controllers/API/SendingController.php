@@ -800,7 +800,7 @@ class SendingController extends BaseController
             $doc_info->save();
         }
 
-        return response()->json($request->all());
+
         foreach ($save_signataire as $s) {
             if ($s['type'] == 'Signataire') {
                 $statut_sending =new Statut_Sending;
@@ -835,6 +835,8 @@ class SendingController extends BaseController
                 $this->dispatch($emailValidataire);
             }
         }
+
+        return response()->json($request->all());
 
         $sending->nbre_signataire = $count_signataire;
         $sending->is_config = 1;
