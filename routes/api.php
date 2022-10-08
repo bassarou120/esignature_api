@@ -164,6 +164,7 @@ Route::group( ['middleware' => ['auth:user-api','scopes:user','cors', 'json.resp
         ]
     ]);
     Route::get('sendings/bysignataire/{id_sending}/{id_signataire}', [SendingController::class, 'getSendingWidgetBySignataire'])->name('user.sendings.widget.signataire');
+    Route::post('sendings/finalise/configuration/{id}', [SendingController::class, 'addFinaliseConfiguration'])->name('user.sendings.add.last.configuration');
     Route::get('sendings/{id_user}/user/{typesignature?}', [SendingController::class, 'getSendingByUser'])->name('user.sendings.byuser');
     Route::get('sendings/get/top/{id_user}/user', [SendingController::class, 'getTopPendingSending'])->name('user.sendings.byuser.top.docsigned');
     Route::post('sendings/confirm/model/registration/{sending}', [SendingController::class, 'saveModelRegistration'])->name('user.sendings.confirm.register.model');
