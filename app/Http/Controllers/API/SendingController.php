@@ -820,8 +820,9 @@ class SendingController extends BaseController
                         ]
                     ]
                 );
-                return response()->json($request->all());
+
                 $this->dispatch($emailSignataire);
+                return response()->json($request->all());
             } else {
                 $emailValidataire = new SendValidatorMailJob(
                     [
