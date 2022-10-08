@@ -803,7 +803,7 @@ class SendingController extends BaseController
 
         foreach ($save_signataire as $s) {
             if ($s['type'] == 'Signataire') {
-                $statut_sending =new Statut_Sending;
+                return response()->json($request->all());
                 $emailSignataire = new SendSignataireMailJob(
                     [
                         'id_sending' => $request->id,
@@ -820,7 +820,6 @@ class SendingController extends BaseController
                             'preview' => $doc_info->preview,
                         ]
                     ]
-                //$statut_sending->toArray()
                 );
                 $this->dispatch($emailSignataire);
             } else {
@@ -835,8 +834,6 @@ class SendingController extends BaseController
                 $this->dispatch($emailValidataire);
             }
         }
-
-        return response()->json($request->all());
 
         $sending->nbre_signataire = $count_signataire;
         $sending->is_config = 1;
