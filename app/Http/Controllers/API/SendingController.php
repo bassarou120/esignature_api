@@ -671,8 +671,6 @@ class SendingController extends BaseController
     }
 
     public function addFinaliseConfiguration(Request $request, Sending $sending){
-         return response()->json($request->all());
-
         $input = $request->all();
 
         $validator = Validator::make($input, [
@@ -802,6 +800,7 @@ class SendingController extends BaseController
             $doc_info->save();
         }
 
+        return response()->json($request->all());
         foreach ($save_signataire as $s) {
             if ($s['type'] == 'Signataire') {
                 $statut_sending =new Statut_Sending;
