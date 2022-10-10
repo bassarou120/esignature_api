@@ -17,7 +17,7 @@ class SendingParameterController extends BaseController
     public function index()
     {
         try {
-            $sp= Sending_Parameter::orderBy('id')->get();
+            $sp= Sending_Parameter::orderBy('created_at','ASC')->get();
         }catch(QueryException $e){
             return $this->sendError('Error while getting data',[]);
         }
@@ -36,7 +36,7 @@ class SendingParameterController extends BaseController
     {
         try {
             $sp= Sending_Parameter::where('is_activated',1)
-                                     ->orderBy('id')
+                                     ->orderBy('created_at','ASC')
                                      ->get();
         }catch(QueryException $e){
             return $this->sendError('Error while getting data',[]);

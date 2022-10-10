@@ -290,7 +290,6 @@
                         <tr>
                             <td class="logo" style="text-align: center;">
                                 <h1><a href="#">E-Signature</a></h1>
-                                <img src="[$app_url]/api/sendings/mail/opened/[$id_sending]/[$id_validataire]" alt="opened"  style="display: none">
                             </td>
                         </tr>
                     </table>
@@ -302,24 +301,7 @@
                         <tr>
                             <td style="padding: 0 2.5em; text-align: center; padding-bottom: 3em;">
                                 <div class="text">
-                                    <h3> [$name], [$sending_auth] vous a ajouté comme signataire du document [$doc_title].
-                                        [$sending_expiration]
-                                    </h3>
-                                </div>
-                            </td>
-                        </tr>
-
-                        <tr>
-                            <td style="text-align: center;">
-                                <div class="text-author">
-                                    <img src="[$app_url]/previews/$preview" alt="" style="width: 100px; max-width: 600px; height: auto; margin: auto; display: block;">
-                                    <h3 class="name">[$doc_title]</h3>
-                                    <p><a href="[$app_url]/api/sendings/doc/opened/[$id_sending]/[$id_signataire]" class="btn btn-primary">Valider maintenant</a></p>
-                                </div>
-                                <div>
-                                    <p class="text-center">Utilisez ce lien si vous ne parvenez pas à cliquer sur le lien:
-                                        <br>my_link
-                                    </p>
+                                    <h3> [$name], [$sending_auth] partage avec vous une copie du document [$doc_title].</h3>
                                 </div>
                             </td>
                         </tr>
@@ -350,7 +332,7 @@
                                             <h3 class="heading">Contact Info</h3>
                                             <ul>
                                                 <li><span class="text">203 Fake St. Mountain View, San Francisco, California, USA</span></li>
-                                                <li><span class="text">+2 392 3929 210</span></a></li>
+                                                <li><span class="text">+2 392 3929 210</span></li>
                                             </ul>
                                         </td>
                                     </tr>

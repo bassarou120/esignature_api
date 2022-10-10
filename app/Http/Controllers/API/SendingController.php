@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\API\BaseController as BaseController;
+use App\Jobs\SendCcMailJob;
 use App\Jobs\SendSignataireMailJob;
 use App\Jobs\SendValidatorMailJob;
 use App\Models\Contact;
@@ -822,15 +823,24 @@ class SendingController extends BaseController
                 );
 
                 $this->dispatch($emailSignataire);
-                return response()->json($request->all());
+               // return response()->json($request->all());
             } else {
                 $emailValidataire = new SendValidatorMailJob(
                     [
                         'id_sending' => $request->id,
-                        'id_signataire' => $s['id'],
+                        'id_validataire' => $s['id'],
+                        'email' => $s['email'],
                         'validataires' => $validataire_only_array,
+                        'message' => $request->message == null ? '' : $request->message,
                         'subject' => $request->objet == null ? 'Validation requise' : $request->objet,
                         'view' => 'validataire_mail_view',
+                        'mail_detail' => [
+                            'name' => $s['name'],
+                            'doc_title' => $doc_info->title,
+                            'sending_auth' => Auth::user()->name,
+                            'sending_expiration' => $doc_id->expiration,
+                            'preview' => $doc_info->preview,
+                        ]
                     ]);
                 $this->dispatch($emailValidataire);
             }
@@ -1090,6 +1100,41 @@ class SendingController extends BaseController
                 $send = Sending::find($request->id_sending);
                 $send->statut = FINIR;
                 $send->save();
+
+                $doc = Document::find($send->id_document);
+                $doc->is_signed = 1 ;
+
+               $the_modifying_file = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_copy.pdf');
+
+               // add_answers_to_document
+
+
+
+                //send cc of document
+
+                $cc = Signataire::where('type','CC')->where('id_signataire',$request->id_sending)->get();
+                if(!is_null($cc)){
+                    foreach ($cc as $s) {
+                        $emailSignataire = new SendCcMailJob(
+                            [
+//                                'id_sending' => $request->id,
+//                                'id_signataire' => $s['id'],
+                                'email' => $s['email'],
+//                                'subject' => $request->objet == null ? 'Signature requise' : $request->objet,
+//                                'message' => $request->message == null ? '' : $request->message,
+                                'mail_detail' => [
+                                    'name' => $s['name'],
+                                    'doc_title' => $doc->title,
+                                    'sending_auth' => Auth::user()->name,
+                                    'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
+                                ]
+                            ]
+                        );
+
+                        $this->dispatch($emailSignataire);
+                    }
+                }
+
             }
         }
 

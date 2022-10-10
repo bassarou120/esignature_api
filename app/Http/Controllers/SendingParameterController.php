@@ -36,7 +36,7 @@ class SendingParameterController extends Controller
     {
         try {
             $sp= Sending_Parameter::where('is_activated',1)
-                                     ->orderBy('id')
+                                     ->orderBy('created_at','ASC')
                                      ->get();
         }catch(QueryException $e){
             return $this->sendError('Error while getting data',[]);
