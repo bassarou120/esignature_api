@@ -1112,16 +1112,13 @@ class SendingController extends BaseController
 
                 //send cc of document
 
-                $cc = Signataire::where('type','CC')->where('id_signataire',$request->id_sending)->get();
+                $cc = Signataire::where('type','CC')->where('id_sending',$request->id_sending)->get();
                 if(!is_null($cc)){
                     foreach ($cc as $s) {
                         $emailSignataire = new SendCcMailJob(
                             [
 //                                'id_sending' => $request->id,
-//                                'id_signataire' => $s['id'],
                                 'email' => $s['email'],
-//                                'subject' => $request->objet == null ? 'Signature requise' : $request->objet,
-//                                'message' => $request->message == null ? '' : $request->message,
                                 'mail_detail' => [
                                     'name' => $s['name'],
                                     'doc_title' => $doc->title,
