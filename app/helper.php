@@ -51,7 +51,7 @@ function callback($buffer,$data)
         $buffer );
 }
 
-function  send_mail($data,$statut_signataire){
+function  send_mail($data){
     require base_path("vendor/autoload.php");
     $mail = new PHPMailer(true);     // Passing `true` enables exceptions
     try {
