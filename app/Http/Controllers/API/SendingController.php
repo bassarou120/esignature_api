@@ -802,7 +802,7 @@ class SendingController extends BaseController
             $doc_info->save();
         }
 
-
+        return response()->json($save_signataire);
         foreach ($save_signataire as $s) {
             if ($s['type'] == 'Signataire') {
                 $emailSignataire = new SendSignataireMailJob(
@@ -822,21 +822,7 @@ class SendingController extends BaseController
                         ]
                     ]
                 );
-              return response()->json([
-                  'id_sending' => $request->id,
-                  'id_signataire' => $s['id'],
-                  'email' => $s['email'],
-                  'subject' => $request->objet == null ? 'Signature requise' : $request->objet,
-                  'message' => $request->message == null ? '' : $request->message,
-                  'view' => 'signataire_mail_view',
-                  'mail_detail' => [
-                      'name' => $s['name'],
-                      'doc_title' => $doc_info->title,
-                      'sending_auth' => Auth::user()->name,
-                      'sending_expiration' => $doc_id->expiration,
-                      'preview' => $doc_info->preview,
-                  ]
-              ]);
+
                 $this->dispatch($emailSignataire);
 
             } else {
