@@ -39,9 +39,9 @@ class SendSignataireMailJob implements ShouldQueue
      */
     public function handle()
     {
-       send_mail($this->signataires);
+//       send_mail($this->signataires);
 
-     /*   $mail = new PHPMailer(true);     // Passing `true` enables exceptions
+        $mail = new PHPMailer(true);     // Passing `true` enables exceptions
         try {
             // Email server settings
             $mail->SMTPDebug = 0;
@@ -112,7 +112,7 @@ class SendSignataireMailJob implements ShouldQueue
 
         } catch (Exception $e) {
             dump($e);
-        }*/
+        }
 
     }
 }
