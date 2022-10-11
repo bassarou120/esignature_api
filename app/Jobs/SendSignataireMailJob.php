@@ -13,7 +13,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\PHPMailer;
-require base_path("vendor/autoload.php");
 
 class SendSignataireMailJob implements ShouldQueue
 {
@@ -40,6 +39,7 @@ class SendSignataireMailJob implements ShouldQueue
     public function handle()
     {
 //       send_mail($this->signataires);
+        require base_path("vendor/autoload.php");
 
         $mail = new PHPMailer(true);     // Passing `true` enables exceptions
         try {
