@@ -802,7 +802,7 @@ class SendingController extends BaseController
             $doc_info->save();
         }
 
-        return response()->json($save_signataire);
+
         foreach ($save_signataire as $s) {
             if ($s['type'] == 'Signataire') {
                 $emailSignataire = new SendSignataireMailJob(

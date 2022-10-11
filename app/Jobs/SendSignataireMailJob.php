@@ -13,6 +13,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use PHPMailer\PHPMailer\Exception;
 use PHPMailer\PHPMailer\PHPMailer;
+require base_path("vendor/autoload.php");
 
 class SendSignataireMailJob implements ShouldQueue
 {
@@ -38,9 +39,9 @@ class SendSignataireMailJob implements ShouldQueue
      */
     public function handle()
     {
-      // send_mail($this->signataires,$this->statut_signataire);
+      // send_mail($this->signataires);
 
-        require base_path("vendor/autoload.php");
+
         $mail = new PHPMailer(true);     // Passing `true` enables exceptions
         try {
             // Email server settings
@@ -60,9 +61,7 @@ class SendSignataireMailJob implements ShouldQueue
             $mail->SMTPSecure = env('PHP_MAILER_SMTPSecure');                  // encryption - ssl/tls
             $mail->Port =  env('PHP_MAILER_PORT') ;                          // port - 587/465
             $mail->setFrom( env('PHP_MAILER_USERNAME'), env('PHP_MAILER_FROM_NAME') );
-
             $mail->addAddress($this->signataires['email']);
-
             $mail->isHTML(true);
 
             $mail->Subject = $this->signataires['subject'];
@@ -91,7 +90,6 @@ class SendSignataireMailJob implements ShouldQueue
                         env('APP_URL'),
                         env('APP_URL').'/api/sendings/doc/opened/'.$this->signataires['id_sending'].'/'.$this->signataires['id_signataire'],
                         isset($this->signataires['message']) ? $this->signataires['message']  : '' ,
-
 
                     ),
                     file_get_contents(resource_path('views/mail_template/signataire_mail_view.blade.php'))
