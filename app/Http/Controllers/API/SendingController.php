@@ -26,6 +26,7 @@ use App\Http\Resources\Sending as SendingResource;
 use App\Http\Resources\Signataire as SignataireResource;
 use App\Http\Resources\StatutSending as StatutSendingResource;
 use Lcobucci\JWT\Signer;
+use Mpdf\Mpdf;
 use PHPMailer\PHPMailer\PHPMailer;
 use PhpOffice\PhpSpreadsheet\Calculation\MathTrig\Sign;
 use Psy\Util\Json;
@@ -821,9 +822,23 @@ class SendingController extends BaseController
                         ]
                     ]
                 );
-
+              return response()->json([
+                  'id_sending' => $request->id,
+                  'id_signataire' => $s['id'],
+                  'email' => $s['email'],
+                  'subject' => $request->objet == null ? 'Signature requise' : $request->objet,
+                  'message' => $request->message == null ? '' : $request->message,
+                  'view' => 'signataire_mail_view',
+                  'mail_detail' => [
+                      'name' => $s['name'],
+                      'doc_title' => $doc_info->title,
+                      'sending_auth' => Auth::user()->name,
+                      'sending_expiration' => $doc_id->expiration,
+                      'preview' => $doc_info->preview,
+                  ]
+              ]);
                 $this->dispatch($emailSignataire);
-               // return response()->json($request->all());
+
             } else {
                 $emailValidataire = new SendValidatorMailJob(
                     [
@@ -1043,6 +1058,14 @@ class SendingController extends BaseController
 
     }
 
+    private function getAnswerWithWidget($id,$answer_array){
+        for ($i = 0;$i<sizeof($answer_array);$i++){
+            if($answer_array[$i]->id==$id){
+                return $i ;
+            }
+        }
+    }
+
     public function doc_signed(Request $request)
     {
         $input = $request->all();
@@ -1078,10 +1101,11 @@ class SendingController extends BaseController
             'id_statut' => SIGNER
         ]);
 
-        $signataires = Signataire::where('id_sending',$request->id_sending)->get();
+        $signataires = Signataire::where('id_sending',$request->id_sending)->where('type','Signataire')->get();
 
         if(!is_null($signataires)){
             $one = 1;
+            $all_answer = [];
             foreach ($signataires as $s){
                 $last_statut = Statut_Sending::where('id_sending',$request->id_sending)
                                                ->where('id_signataire',$s->id)
@@ -1095,10 +1119,13 @@ class SendingController extends BaseController
                 else{
                     $one = $one * 1 ;
                 }
+                $all_answer = array_merge($all_answer,json_decode($s->signataire_answers) );
             }
+
             if($one == 1){
                 $send = Sending::find($request->id_sending);
                 $send->statut = FINIR;
+                $send->response = json_encode($all_answer);
                 $send->save();
 
                 $doc = Document::find($send->id_document);
@@ -1107,9 +1134,71 @@ class SendingController extends BaseController
                $the_modifying_file = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_copy.pdf');
 
                // add_answers_to_document
+                require base_path("vendor/autoload.php");
+                $mpdf = new mPDF();
+
+                $mpdf->AddPage();
+                $mpdf->setSourceFile($the_modifying_file);
+                $mpdf->SetFont('Arial','',$send->police);
+
+                $widget=json_decode($send->configuration);
+                foreach ($widget as $w){
+                    $tplIdx = $mpdf->importPage($w->page);
+                    $mpdf->useTemplate($tplIdx, 10, 10, 200);
+                    $mpdf->SetXY($w->positionX*200/500, $w->positionY);
+                    echo $w->positionX*200/500; echo '/'.$w->positionY;
+                    echo $w->positionX*200/500 ;
+                    echo '                        ';
+                    $mpdf->Write(0, "Mindfire");
+//                    if($w->type_widget=='signature'){
+//                        $i= $this->getAnswerWithWidget('signature',$all_answer);
+//                    }
+//                    else{
+//                        $i= $this->getAnswerWithWidget($w->widget_id,$all_answer);
+//                    }
+//                    if($w->type_widget !='certificat' && $w->type_widget !='file' && $w->type_widget !='signature'){
+//                        $mpdf->Write(0, $all_answer[$i]->value);
+//                        echo 'pas file';
+//                    }
+//                    else{
+//                        $html ='<div> <img src="'.$all_answer[$i]->value.'" /></div>';
+//                        $mpdf->WriteHTML($html);
+//                        echo 'file';
+//                    }
+
+                }
 
 
+           /*     foreach ($signataires as $s){
+                    $widget=json_decode($s->widget);
+                    $answer=json_decode($s->signataire_answers);
 
+                    foreach ($widget as $w){
+                        $tplIdx = $mpdf->importPage($w->page);
+                        $mpdf->useTemplate($tplIdx, 10, 10, 200);
+                        $mpdf->SetXY($w->positionX, $w->positionY);
+                        if($w->type_widget=='signature'){
+                            $i= $this->getAnswerWithWidget('signature',$answer);
+                        }
+                        else{
+                            $i= $this->getAnswerWithWidget($w->widget_id,$answer);
+                        }
+                        if($w->type_widget !='certificat' && $w->type_widget !='file' && $w->type_widget !='signature'){
+                            $mpdf->Write(0, $answer[$i]->value);
+                            echo 'pas file';
+                        }
+                        else{
+                            $html ='<div> <img src="'.$answer[$i]->value.'" /></div>';
+                            $mpdf->WriteHTML($html);
+                            echo 'file';
+                        }
+
+                    }
+                }*/
+
+
+                $mpdf->Output(public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signer.pdf'),'F');
+                return response()->json('stop');
                 //send cc of document
 
                 $cc = Signataire::where('type','CC')->where('id_sending',$request->id_sending)->get();

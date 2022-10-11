@@ -15,6 +15,7 @@
         "laravel/sanctum": "^2.11",
         "laravel/tinker": "^2.5",
         "laravel/ui": "^3.4",
+        "mpdf/mpdf": "^8.1",
         "phpmailer/phpmailer": "^6.6",
         "spatie/pdf-to-image": "^2.2",
         "yajra/laravel-datatables": "^1.5"

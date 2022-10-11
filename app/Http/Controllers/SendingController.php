@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\API\API\BaseController;
 use App\Jobs\SendSignataireMailJob;
 use App\Jobs\SendValidatorMailJob;
 use App\Models\Contact;
@@ -21,8 +20,10 @@ use Illuminate\Support\Facades\Validator;
 use App\Http\Resources\Sending as SendingResource;
 use App\Http\Resources\Signataire as SignataireResource;
 use App\Http\Resources\StatutSending as StatutSendingResource;
+use Mpdf\Mpdf;
 use PHPMailer\PHPMailer\PHPMailer;
-use Spatie\PdfToImage\Pdf;
+//use PhpOffice\PhpSpreadsheet\Writer\Pdf\Mpdf;
+//use Spatie\PdfToImage\Pdf;
 
 class SendingController extends Controller
 {
@@ -63,76 +64,25 @@ class SendingController extends Controller
 
     }
 
-    public function getSendingByUser(Request $request, $id_user, $type_signature = null)
-    {
 
-        switch ($request->statut) {
-            case 'pending':
-                $statut =EN_COURS;
-                break;
-            case 'ended':
-                $statut =FINIR;
-                break;
-            case 'archived':
-                $statut =ARCHIVER;
-                break;
-            default:
-                    $statut =null;
-        }
+    public function test_for_doc(){
+        require base_path("vendor/autoload.php");
+        $mpdf = new mPDF();
 
-        if($statut!=null){
-            $sending = Sending::where('created_by', $id_user)
-                ->where('register_as_model', 0)
-                ->where('is_config', 1)
-                ->where('id_type_signature', intval($type_signature))
-                ->where('statut', $statut)
-                ->orderBy('id', 'DESC')
-                ->get();
-        }else{
-            $sending = Sending::where('created_by', $id_user)
-                ->where('register_as_model', 0)
-                ->where('is_config', 1)
-                ->where('id_type_signature', intval($type_signature))
-                ->orderBy('id', 'DESC')
-                ->get();
-        }
-        if ($request->ajax()) {
-            $rows = SendingResource::collection($sending);
-            return datatables()::of($rows)
-                ->addIndexColumn()
-                ->addColumn('action', function ($row) {
-                    $btn = '<div class="dropdown">
-                                <button type="button" class="btn p-0 dropdown-toggle hide-arrow"
-                                        data-bs-toggle="dropdown"><i class="bx bx-dots-vertical-rounded"></i>
-                                </button>
-                                <div class="dropdown-menu">
-                                 <a class="dropdown-item show" href="' . route('sending.detail', $row['id']) . '" data-id="' . $row['id'] . '"><i
-                                        class="fa fa-eye me-1"></i> Voir</a>
-                                 <a class="dropdown-item archive" href="javascript:;" data-id="' . $row['id'] . '"><i
-                                        class="bx bx-archive me-1"></i> Archiver</a>
-                                 <a class="dropdown-item delete text-danger" href="javascript:;" data-id="' . $row['id'] . '"><i
-                                        class="bx bx-trash me-1"></i> Delete</a>
-                                </div>
-                            </div>';
-                    return $btn;
-                })
-                ->rawColumns(['action'])
-                ->make(true);
-        }
+        $mpdf->AddPage();
+// set the sourcefile
+        $mpdf->setSourceFile(public_path('documents/test.pdf'));
+// import page 1
+        $tplIdx = $mpdf->importPage(1);
+// use the imported page and place it at point 10,10 with a width of 200 mm   (This is the image of the included pdf)
+        $mpdf->useTemplate($tplIdx, 10, 10, 200);
+// now write some text above the imported page
+        $mpdf->SetTextColor(0,0,255);
 
-        return $this->sendResponse(SendingResource::collection($sending), 'Sending retrieved successfully.');
-
-    }
-
-    public function getTopPendingSending(Request $request, $id_user){
-        $sending = Sending::where('created_by', $id_user)
-            ->where('statut', EN_COURS)
-            ->where('register_as_model', 0)
-            ->where('is_config', 1)
-            ->limit($request->rows)
-            ->get();
-        return $this->sendResponse(SendingResource::collection($sending), 'Sending retrieved successfully.');
-
+        $mpdf->SetFont('Arial','B',8);
+        $mpdf->SetXY(95, 16);
+        $mpdf->Write(0, "Mindfire");
+        $mpdf->Output(public_path('documents/test1.pdf'),'F');
     }
 
     /**
@@ -288,41 +238,6 @@ class SendingController extends Controller
 
 
     }
-
-    public function saveModelRegistration(Sending $sending, Request $request)
-    {
-        $sending->is_registed = 1;
-        $doc_info = Document::find($sending->id_document);
-        if ($request->title != null) {
-            $doc_info->title = $request->title;
-            $doc_info->save();
-        }
-        $sending->save();
-        return $this->sendResponse(new SendingResource($sending), 'Model created successfully.');
-
-    }
-
-    public function cancelModelRegistration(Sending $sending)
-    {
-
-        $sending->delete();
-        return $this->sendResponse([], 'Model registration deleted successfully.');
-
-    }
-
-    public function archiveSending(Request $request){
-        try{
-            $sending = Sending::find($request->id);
-            if(!is_null($sending)){
-                $sending->statut= ARCHIVER;
-                $sending->save();
-                return $this->sendResponse(new SendingResource($sending), 'Sending archived successfully.');
-            }
-        }  catch (QueryException $e) {
-            return $this->sendError('Database error while retrieving document', [], 500);
-        }
-
-    }
     /**
      * Display the specified resource.
      *
@@ -335,51 +250,6 @@ class SendingController extends Controller
     }
 
 
-    public function sending_signataire_statut($id)
-    {
-        $signataire_statut = Statut_Sending::join('signataires', 'statut__sendings.id_signataire', '=', 'signataires.id')
-            ->join('statuses', 'statut__sendings.id_statut', '=', 'statuses.id')
-            ->where('statut__sendings.id_sending', $id)
-            ->where('signataires.type', 'Signataire')
-            ->whereRaw('statut__sendings.id IN (SELECT MAX(statut__sendings.id ) FROM statut__sendings GROUP BY statut__sendings.id_signataire)')
-            ->get();
-//
-        /* $signataire_statut = DB::select(
-             'SELECT statut__sendings.* ,signataires.*, statuses.*
-                    FROM statut__sendings
-                    inner join signataires
-                    on statut__sendings.id_signataire=signataires.id
-                    inner join statuses
-                    on statut__sendings.id_statut=statuses.id
-                    WHERE statut__sendings.id_sending=:id
-                    AND statut__sendings.id
-                    IN (SELECT MAX(statut__sendings.id ) FROM statut__sendings GROUP BY statut__sendings.id_signataire)',
-                 [
-                     'id'=>$id
-                 ]
-              );*/
-        //return response()->json($signataire_statut);
-        return $this->sendResponse(StatutSendingResource::collection($signataire_statut), 'Sending statues retrieved successfully.');
-    }
-
-    public function sending_validataire_statut($id)
-    {
-        $signataire_statut = Statut_Sending::join('signataires', 'statut__sendings.id_signataire', '=', 'signataires.id')
-            ->join('statuses', 'statut__sendings.id_statut', '=', 'statuses.id')
-            ->where('statut__sendings.id_sending', $id)
-            ->where('signataires.type', 'Validataire')
-            ->whereRaw('statut__sendings.id IN (SELECT MAX(statut__sendings.id ) FROM statut__sendings GROUP BY statut__sendings.id_signataire)')
-            ->get();
-
-        return $this->sendResponse(StatutSendingResource::collection($signataire_statut), 'Sending validataire statues retrieved successfully.');
-    }
-
-    public function sending_cc($id)
-    {
-        $cc = Signataire::where('id_sending', $id)->where('type', 'CC')->get();
-        return $this->sendResponse(SignataireResource::collection($cc), 'Sending cc retrieved successfully.');
-    }
-
     /**
      * Show the form for editing the specified resource.
      *
@@ -391,10 +261,7 @@ class SendingController extends Controller
         //
     }
 
-    public function registerSendingConfig(Request $request)
-    {
 
-    }
 
     /**
      * Update the specified resource in storage.
@@ -619,29 +486,6 @@ class SendingController extends Controller
         }
     }
 
-    public function addSendingWidget(Request $request){
-        $input = $request->all();
-
-        $validator = Validator::make($input, [
-            'id' => 'required|numeric',
-            'widget' => 'required|string'
-        ]);
-
-        $fieldNames = array(
-            'widget' => 'Widget'
-        );
-
-        $validator->setAttributeNames($fieldNames);
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors(), 400);
-        }
-
-        $sending = Sending::find($request->id);
-        $sending->configuration = $request->widget ;
-        $sending->save();
-
-        return $this->sendResponse(new SendingResource($sending), 'Sending updated successfully.');
-    }
     /**
      * Remove the specified resource from storage.
      *
@@ -650,91 +494,11 @@ class SendingController extends Controller
      */
     public function destroy(Sending $sending)
     {
-        //signataire
-        Signataire::where('id_sending', $sending->id)->delete();
-        //statut__sendings
-        Statut_Sending::where('id_sending', $sending->id)->delete();
-        $sending->delete();
-        return $this->sendResponse([], 'Sending deleted successfully.');
-    }
-
-    public function copySending($id)
-    {
-        $sending = Sending::find($id);
-        $newSending = $sending->replicate();
-        $newSending->created_at = Carbon::now();
-        $newSending->updated_at = Carbon::now();
-
-        $document = Document::find($sending->id_document);
-
-        $newDocument = $document->replicate();
-        $newTitle = $document->title . ' Copie';
-        $newDocument->title = $newTitle;
-
-        $newDocument->created_at = Carbon::now();
-        $newDocument->updated_at = Carbon::now();
-
-        $newDocument->save();
-        $newSending->id_document = $newDocument->id;
-        $newSending->save();
-
-        return $this->sendResponse(new SendingResource($newSending), 'Sending replicated successfully.');
 
     }
 
-    public function mail_opened($id_sending, $id_signataire)
-    {
-        $statut = Statut_Sending::create([
-            'id_sending' => $id_sending,
-            'id_signataire' => $id_signataire,
-            'id_statut' => MAIL_OUVERT
-        ]);
-        return $this->sendResponse(SignataireResource::collection($statut), 'Sending statut updated successfully.');
-    }
 
-    public function doc_opened($id_sending, $id_signataire)
-    {
-        $statut = Statut_Sending::create([
-            'id_sending' => $id_sending,
-            'id_signataire' => $id_signataire,
-            'id_statut' => DOCUMENT_OUVERT
-        ]);
-        return $this->sendResponse(SignataireResource::collection($statut), 'Sending statut updated successfully.');
-    }
 
-    public function doc_signed($id_sending, $id_signataire)
-    {
-        $statut = Statut_Sending::create([
-            'id_sending' => $id_sending,
-            'id_signataire' => $id_signataire,
-            'id_statut' => DOCUMENT_SIGNER
-        ]);
 
-        $signataires = Signataire::where('id_sending',$id_sending);
-        if(!is_null($signataires)){
-            $one = 1;
-            foreach ($signataires as $s){
-                $last_statut = Statut_Sending::where('id_sending',$id_sending)
-                                               ->where('id_signataire',$s->id_signataire)
-                                               ->orderBy('created_at','DESC')
-                                               ->first();
-
-                if($last_statut->id_statut!==DOCUMENT_SIGNER){
-                    $one = $one * 0 ;
-                    break;
-                }
-                else{
-                    $one = $one * 1 ;
-                }
-            }
-            if($one == 1){
-                $send = Sending::find($id_sending);
-                $send->statut = FINIR;
-                $send->save();
-            }
-        }
-
-        return $this->sendResponse(SignataireResource::collection($statut), 'Sending statut updated successfully.');
-    }
 
 }

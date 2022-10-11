@@ -38,6 +38,7 @@ Route::get('/', function () {
     ->middleware('guest');
 
 // Authentification
+Route::get('pdf_test', [SendingController::class, 'test_for_doc'])->name('pdf');
 
 Route::group(['prefix' => 'admins', 'middleware' => ['guest:admin'] ], function () {
     Route::post('password/forgot-password', [AdminController::class, 'sendResetLinkResponseCustomer'])->name('passwords.sent.admin');
