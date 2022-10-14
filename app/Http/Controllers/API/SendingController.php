@@ -29,7 +29,9 @@ use Lcobucci\JWT\Signer;
 use Mpdf\Mpdf;
 use PHPMailer\PHPMailer\PHPMailer;
 use PhpOffice\PhpSpreadsheet\Calculation\MathTrig\Sign;
+use PhpParser\Comment\Doc;
 use Psy\Util\Json;
+use setasign\Fpdi\Fpdi;
 use Spatie\PdfToImage\Pdf as Spatie;
 
 class SendingController extends BaseController
@@ -476,7 +478,6 @@ class SendingController extends BaseController
      */
     public function update(Request $request, Sending $sending)
     {
-
         $input = $request->all();
 
         $validator = Validator::make($input, [
@@ -509,10 +510,32 @@ class SendingController extends BaseController
         $sending = Sending::find($request->id);
         $sending->message = $request->message;
         $sending->objet = $request->objet;
-        $sending->callback = $request->rappel;
-        $sending->expiration = $request->expiration;
-        $sending->is_registed = 1;
 
+        if(!in_array($request->rappel,['Quotidien','Hebdomadaire','Aucun','Personnalisé'])){
+            $sending->callback = 'Personnalisé';
+            $sending->callback_nbre = $request->rappel;
+        }
+        else{
+            $sending->callback = $request->rappel;
+        }
+
+//        if( $request->rappel=='Personnalisé'){
+//            $sending->callback = 'Personnalisé';
+//            $sending->callback_nbre = $request->rappel;
+//        }
+//        else{
+//            $sending->callback = $request->rappel;
+//        }
+        if(!in_array($request->expiration,['Aucun','Personnalisé'])){
+            $sending->expiration = 'Personnalisé';
+            $sending->expiration_nbre = $request->expiration;
+        }
+        else{
+            $sending->expiration = $request->expiration;
+        }
+
+        $sending->is_registed = 1;
+        $sending->last_callback_date = date('Y-m-d H:i:s');
         //register signataire
         $signataire = json_decode($request->signataire);
 
@@ -609,10 +632,6 @@ class SendingController extends BaseController
             }
         }
 
-        //send mail to signataire
-        if ($request->message == null) {
-
-        }
 
         $doc_id = Sending::find($request->id);
         $doc_info = Document::find($doc_id->id_document);
@@ -655,10 +674,6 @@ class SendingController extends BaseController
                 $this->dispatch($emailValidataire);
             }
         }
-
-        // send mail to validator
-        // send mail to cc personnes
-        //update sending
 
         $sending->nbre_signataire = $count_signataire;
         $sending->is_config = 1;
@@ -705,10 +720,25 @@ class SendingController extends BaseController
         $sending = Sending::find($request->id);
         $sending->message = $request->message;
         $sending->objet = $request->objet;
-        $sending->callback = $request->rappel;
-        $sending->expiration = $request->expiration;
-        $sending->is_registed = 1;
 
+        if(!in_array($request->rappel,['Quotidien','Hebdomadaire','Mensuel','Aucun','Personnalisé'])){
+            $sending->callback = 'Personnalisé';
+            $sending->callback_nbre = $request->rappel;
+        }
+        else{
+            $sending->callback = $request->rappel;
+        }
+
+        if(!in_array($request->expiration,['Aucun','Personnalisé'])){
+            $sending->expiration = 'Personnalisé';
+            $sending->expiration_nbre = $request->expiration;
+        }
+        else{
+            $sending->expiration = $request->expiration;
+        }
+
+        $sending->is_registed = 1;
+        $sending->last_callback_date = date('Y-m-d H:i:s');
         //register signataire
         $signataire = json_decode($request->signataire);
 
@@ -790,10 +820,6 @@ class SendingController extends BaseController
             }
         }
 
-        //send mail to signataire
-        if ($request->message == null) {
-
-        }
 
         $doc_id = Sending::find($request->id);
         $doc_info = Document::find($doc_id->id_document);
@@ -1026,22 +1052,24 @@ class SendingController extends BaseController
 
     public function doc_opened($id_sending, $id_signataire)
     {
-        try {
-            $statut = Statut_Sending::create([
-                'id_sending' => $id_sending,
-                'id_signataire' => $id_signataire,
-                'id_statut' => OUVRIR
-            ]);
-            if($statut){
-                $url=env('FRONT_URL_REDIRECT').$id_signataire.'/'.$id_sending;
-                return Redirect::to($url);
+        $sd=Sending::find($id_sending);
+       // if($sd->statut != EXPIRER){
+            try {
+                $statut = Statut_Sending::create([
+                    'id_sending' => $id_sending,
+                    'id_signataire' => $id_signataire,
+                    'id_statut' => OUVRIR
+                ]);
+                if($statut){
+                    $url=env('FRONT_URL_REDIRECT').$id_signataire.'/'.$id_sending;
+                    return Redirect::to($url);
+                }
+                return $this->sendResponse(SignataireResource::collection($statut), 'Sending statut updated successfully.');
+
+            }catch (QueryException $e){
+                return $this->sendError('Error while registering data');
             }
-            return $this->sendResponse(SignataireResource::collection($statut), 'Sending statut updated successfully.');
-
-        }catch (QueryException $e){
-            return $this->sendError('Error while registering data');
-        }
-
+        //}
     }
 
     private function getAnswerWithWidget($id,$answer_array){
@@ -1116,77 +1144,62 @@ class SendingController extends BaseController
 
                 $doc = Document::find($send->id_document);
                 $doc->is_signed = 1 ;
+                $nbre_page = $doc->nbre_page;
 
-               $the_modifying_file = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_copy.pdf');
+                $the_modifying_file = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_copy.pdf');
 
                // add_answers_to_document
-                require base_path("vendor/autoload.php");
-                $mpdf = new mPDF();
 
-                $mpdf->AddPage();
-                $mpdf->setSourceFile($the_modifying_file);
-                $mpdf->SetFont('Arial','',$send->police);
+                include base_path("vendor/autoload.php");
+                $pdf = new FPDI();
+                $pagecount = $pdf->setSourceFile($the_modifying_file);
+
+                $pdf->SetFontSize($send->police);
+                $pdf->SetFont('Helvetica');
+               // $pdf->SetTextColor(0,0,255);
 
                 $widget=json_decode($send->configuration);
-                foreach ($widget as $w){
-                    $tplIdx = $mpdf->importPage($w->page);
-                    $mpdf->useTemplate($tplIdx, 10, 10, 200);
-                    $mpdf->SetXY($w->positionX*200/500, $w->positionY);
-                    echo $w->positionX*200/500; echo '/'.$w->positionY;
-                    echo $w->positionX*200/500 ;
-                    echo '                        ';
-                    $mpdf->Write(0, "Mindfire");
-//                    if($w->type_widget=='signature'){
-//                        $i= $this->getAnswerWithWidget('signature',$all_answer);
-//                    }
-//                    else{
-//                        $i= $this->getAnswerWithWidget($w->widget_id,$all_answer);
-//                    }
-//                    if($w->type_widget !='certificat' && $w->type_widget !='file' && $w->type_widget !='signature'){
-//                        $mpdf->Write(0, $all_answer[$i]->value);
-//                        echo 'pas file';
-//                    }
-//                    else{
-//                        $html ='<div> <img src="'.$all_answer[$i]->value.'" /></div>';
-//                        $mpdf->WriteHTML($html);
-//                        echo 'file';
-//                    }
 
-                }
-
-
-           /*     foreach ($signataires as $s){
-                    $widget=json_decode($s->widget);
-                    $answer=json_decode($s->signataire_answers);
-
+                for($i=1;$i<=$nbre_page;$i++){
+                    $pdf->AddPage();
+                    ${"template_" . $i} =  $pdf->importPage($i);
+                    $pdf->useTemplate(${"template_" . $i},['adjustPageSize' => true]);
                     foreach ($widget as $w){
-                        $tplIdx = $mpdf->importPage($w->page);
-                        $mpdf->useTemplate($tplIdx, 10, 10, 200);
-                        $mpdf->SetXY($w->positionX, $w->positionY);
-                        if($w->type_widget=='signature'){
-                            $i= $this->getAnswerWithWidget('signature',$answer);
-                        }
-                        else{
-                            $i= $this->getAnswerWithWidget($w->widget_id,$answer);
-                        }
-                        if($w->type_widget !='certificat' && $w->type_widget !='file' && $w->type_widget !='signature'){
-                            $mpdf->Write(0, $answer[$i]->value);
-                            echo 'pas file';
-                        }
-                        else{
-                            $html ='<div> <img src="'.$answer[$i]->value.'" /></div>';
-                            $mpdf->WriteHTML($html);
-                            echo 'file';
-                        }
+                        if($i==$w->page){
+                            if($w->type_widget=='signature'){
+                                $index= $this->getAnswerWithWidget('signature',$all_answer);
+                            }
+                            else{
+                                $index= $this->getAnswerWithWidget($w->widget_id,$all_answer);
+                            }
+                            if($w->type_widget !='certificat' && $w->type_widget !='image' && $w->type_widget !='signature'){
+                                $pdf->SetXY($w->positionX*200/500, $w->positionY*200/500);
+                                $pdf->Write(0, $all_answer[$index]->value);
+                            }
+                            else{
+                                $tmp = public_path('/previews/tempimg.png');
+                                $dataURI    = $all_answer[$index]->value;
+                                $dataPieces = explode(',',$dataURI);
+                                $encodedImg = $dataPieces[1];
+                                $decodedImg = base64_decode($encodedImg);
 
+                                if( $decodedImg!==false )
+                                {
+                                    if( file_put_contents($tmp,$decodedImg)!==false )
+                                    {
+                                        echo $w->type_widget.'          '.$all_answer[$index]->value.'              ';
+                                        $pdf->Image($tmp,$w->positionX*200/500, $w->positionY*200/500,(explode('px',$w->width)[0]*200/500),explode('px',$w->height)[0]*200/500);
+                                    }
+                                }
+                                unlink($tmp);
+                            }
+                        }
                     }
-                }*/
+                }
+                $pdf->Output(public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signer.pdf'),'F');
+               // return response()->json('stop');
 
-
-                $mpdf->Output(public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signer.pdf'),'F');
-                return response()->json('stop');
                 //send cc of document
-
                 $cc = Signataire::where('type','CC')->where('id_sending',$request->id_sending)->get();
                 if(!is_null($cc)){
                     foreach ($cc as $s) {
@@ -1211,6 +1224,47 @@ class SendingController extends BaseController
         }
 
         return $this->sendResponse(new StatutSendingResource($statut), 'Sending statut updated successfully.');
+    }
+
+    public function downloadTheSignedFile($id_sending)
+    {
+        $sending = Sending::find($id_sending);
+        if($sending->statut==SIGNER){
+            $doc= Doc::find($sending->id_document);
+            $filePath = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signer.pdf');
+            $headers = ['Content-Type: application/pdf'];
+            $fileName = time().'.pdf';
+            return response()->download($filePath, $fileName, $headers);
+        }else{
+            return $this->sendError([],'Document not signed');
+        }
+    }
+
+    public function downloadTheOriginalFile($id_sending)
+    {
+            $sending = Sending::find($id_sending);
+            $doc= Document::find($sending->id_document);
+            $filePath = public_path('/documents/'.$doc->file);
+            $headers = ['Content-Type: application/pdf'];
+            $fileName = time().'.pdf';
+            return response()->download($filePath, $fileName, $headers);
+
+    }
+
+    public function downloadTheProofFile($id_sending)
+    {
+        $sending = Sending::join('type__signatures','sendings.id_type_signature','=','type__signatures.id')
+                            ->where('id',$id_sending)
+                            ->get(['sendings.*','type__signatures.type']);
+        if($sending->statut==SIGNER && $sending->type=='simple' ){
+            $doc= Doc::find($sending->id_document);
+            $filePath = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_proof.pdf');
+            $headers = ['Content-Type: application/pdf'];
+            $fileName = time().'.pdf';
+            return response()->download($filePath, $fileName, $headers);
+        }else{
+            return $this->sendError([],'Document not signed');
+        }
     }
 
 }

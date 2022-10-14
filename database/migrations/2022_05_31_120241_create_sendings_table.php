@@ -25,6 +25,9 @@ class CreateSendingsTable extends Migration
             $table->string('message')->nullable();
             $table->enum('callback',['Personnalisé','Quotidien','Hebdomadaire','Aucun'])->nullable();
             $table->enum('expiration',['Personnalisé','Aucun'])->nullable();
+            $table->string('callback_nbre')->nullable();
+            $table->string('expiration_nbre')->nullable();
+            $table->timestamp('last_callback_date')->nullable();
             $table->integer('remember')->nullable();
             $table->unsignedBigInteger('created_by');
             $table->boolean('is_config')->default('0');

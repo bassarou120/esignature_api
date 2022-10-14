@@ -17,6 +17,8 @@
         "laravel/ui": "^3.4",
         "mpdf/mpdf": "^8.1",
         "phpmailer/phpmailer": "^6.6",
+        "setasign/fpdf": "^1.8",
+        "setasign/fpdi-fpdf": "^2.3",
         "spatie/pdf-to-image": "^2.2",
         "yajra/laravel-datatables": "^1.5"
     },
