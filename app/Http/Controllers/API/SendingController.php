@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Resources\Sending as SendingResource;
@@ -33,6 +34,7 @@ use PhpParser\Comment\Doc;
 use Psy\Util\Json;
 use setasign\Fpdi\Fpdi;
 use Spatie\PdfToImage\Pdf as Spatie;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SendingController extends BaseController
 {
@@ -75,13 +77,6 @@ class SendingController extends BaseController
 
     public function getSendingByUser(Request $request, $id_user, $type_signature = null)
     {
-        /* $sending = Sending::where('created_by', $id_user)
-            ->where('register_as_model', 0)
-            ->where('is_config', 1)
-            ->where('id_type_signature', $type_signature)
-            ->where('statut', $statut)
-            ->orderBy('id', 'DESC')
-            ->get();*/
         switch ($request->statut) {
             case 'pending':
                 $statut =EN_COURS;
@@ -127,8 +122,6 @@ class SendingController extends BaseController
                     ->where('is_config', 1)
                     ->orderBy('sendings.id', 'DESC');
             }
-
-           // return response()->json($sending->get(['sendings.*']));
         }
 
         if($request->search_val){
@@ -519,13 +512,6 @@ class SendingController extends BaseController
             $sending->callback = $request->rappel;
         }
 
-//        if( $request->rappel=='Personnalisé'){
-//            $sending->callback = 'Personnalisé';
-//            $sending->callback_nbre = $request->rappel;
-//        }
-//        else{
-//            $sending->callback = $request->rappel;
-//        }
         if(!in_array($request->expiration,['Aucun','Personnalisé'])){
             $sending->expiration = 'Personnalisé';
             $sending->expiration_nbre = $request->expiration;
@@ -1240,14 +1226,18 @@ class SendingController extends BaseController
         }
     }
 
-    public function downloadTheOriginalFile($id_sending)
+    public function downloadTheOriginalFile($id_sending): BinaryFileResponse
     {
             $sending = Sending::find($id_sending);
             $doc= Document::find($sending->id_document);
             $filePath = public_path('/documents/'.$doc->file);
             $headers = ['Content-Type: application/pdf'];
             $fileName = time().'.pdf';
-            return response()->download($filePath, $fileName, $headers);
+            $name=$doc->file;
+            return Response::download($filePath, $name, $headers);
+
+           // return Response::download($filePath, $fileName, $headers);
+       // return response()->download($filePath, $fileName, $headers);
 
     }
 

@@ -59,6 +59,13 @@ Route::group(['middleware' => ['cors', 'json.response'] ],function(){
     Route::put('sendings/doc/signed', [SendingController::class, 'doc_signed'])->name('user.sendings.docsigned');
 });
 
+Route::group( ['middleware' => ['auth:user-api','scopes:user', 'json.response'] ],function() {
+    Route::get('sendings/download/original/document/{id}', [SendingController::class, 'downloadTheOriginalFile'])->name('user.sendings.download.original');
+    Route::get('sendings/download/proof/document/{id}', [SendingController::class, 'downloadTheProofFile'])->name('user.sendings.download.proof');
+    Route::get('sendings/download/signed/document/{id}', [SendingController::class, 'downloadTheSignedFile'])->name('user.sendings.download.signed');
+
+});
+
 Route::group( ['middleware' => ['auth:user-api','scopes:user','cors', 'json.response'] ],function(){
     Route::apiResource('users', UserController::Class, [
         'names' => [
@@ -180,9 +187,6 @@ Route::group( ['middleware' => ['auth:user-api','scopes:user','cors', 'json.resp
     Route::put('sendings/add/widget/{id_sending}', [SendingController::class, 'addSendingWidget'])->name('user.sendings.addwidget');
     Route::put('sendings/add/signataires/{id_sending}', [SendingController::class, 'addSendingSignataire'])->name('user.sendings.addsignataire');
     Route::put('sendings/add/signataires/answer', [SendingController::class, 'addSignataireAnswer'])->name('user.sendings.addsignataireanswer');
-    Route::get('sendings/download/signed/document/{id}', [SendingController::class, 'downloadTheSignedFile'])->name('user.sendings.download.signed');
-    Route::get('sendings/download/original/document/{id}', [SendingController::class, 'downloadTheOriginalFile'])->name('user.sendings.download.original');
-    Route::get('sendings/download/proof/document/{id}', [SendingController::class, 'downloadTheProofFile'])->name('user.sendings.download.proof');
 
 
     Route::apiResource('report', ReportIssuesController::Class, [
