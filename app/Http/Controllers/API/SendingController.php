@@ -1126,7 +1126,7 @@ class SendingController extends BaseController
                 $send = Sending::find($request->id_sending);
                 $send->statut = FINIR;
                 $send->response = json_encode($all_answer);
-                $send->save();
+
 
                 $doc = Document::find($send->id_document);
                 $doc->is_signed = 1 ;
@@ -1166,7 +1166,7 @@ class SendingController extends BaseController
                             }
                             else{
                                 $tmp = public_path('/previews/tempimg.png');
-                                echo 'valeur:'.$all_answer[$index];
+                                echo 'valeur:'.$all_answer[1];
                                 $dataURI    = $all_answer[$index]->value;
                                 $dataPieces = explode(',',$dataURI);
                                 $encodedImg = $dataPieces[1];
@@ -1209,7 +1209,9 @@ class SendingController extends BaseController
                     }
                 }
 
+                $send->save();
             }
+
         }
 
         return $this->sendResponse(new StatutSendingResource($statut), 'Sending statut updated successfully.');
