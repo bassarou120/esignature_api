@@ -245,19 +245,20 @@ class SendingController extends BaseController
 
         }else{
             if ($request->hasFile('document')) {
-
                 $doc = $request->file('document');
                 $title = pathinfo($doc->getClientOriginalName(), PATHINFO_FILENAME);
-                $imageName1 = $doc->getClientOriginalName();
-                if(file_exists(public_path('documents').'/'.$imageName1)){
+                //$imageName1 = $doc->getClientOriginalName();
+                $time =time();
+                $imageName1 = $time.'.pdf';
 
-                    $imageName1 = $title.'_'.time().'.pdf';
-                    $cp_name = $title.'_'.time().'_copy.pdf';
-                }
-                else{
-                    $cp_name= $title.'_copy.pdf';
-                }
-
+//                if(file_exists(public_path('documents').'/'.$imageName1)){
+//                    $imageName1 = $title.'_'.time().'.pdf';
+//                    $cp_name = $title.'_'.time().'_copy.pdf';
+//                }
+//                else{
+//                    $cp_name= $title.'_copy.pdf';
+//                }
+                $cp_name= $time.'_copy.pdf';
                 $doc->move(public_path('documents'), $imageName1);
                 copy(public_path('documents').'/'.$imageName1,public_path('documents').'/'.$cp_name);
                // $doc->move(public_path('documents'), $cp_name);
@@ -266,7 +267,7 @@ class SendingController extends BaseController
                 $pdf = new Spatie(public_path('documents') . '/' . $imageName1);
                 $nbre_page = $pdf->getNumberOfPages();
                 $preview_name = $title . time();
-                $t = time();
+                $t = $time;
                 for ($i = 1; $i <= $nbre_page; $i++) {
                     $pdf->setPage($i);
                     Storage::makeDirectory(public_path('/previews/' . $t));
@@ -1185,33 +1186,33 @@ class SendingController extends BaseController
                // return response()->json('stop');
 
                 //send cc of document
-                $cc = Signataire::where('type','CC')->where('id_sending',$request->id_sending)->get();
-                if(!is_null($cc)){
-                    foreach ($cc as $s) {
-                        $emailSignataire = new SendCcMailJob(
-                            [
-//                                'id_sending' => $request->id,
-                                'email' => $s['email'],
-                                'mail_detail' => [
-                                    'name' => $s['name'],
-                                    'doc_title' => $doc->title,
-                                    'sending_auth' => Auth::user()->name,
-                                    'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
-                                ]
-                            ]
-                        );
-
-                        $this->dispatch($emailSignataire);
-                    }
-                }
-
-                $send->save();
+//                $cc = Signataire::where('type','CC')->where('id_sending',$request->id_sending)->get();
+//                if(!is_null($cc)){
+//                    foreach ($cc as $s) {
+//                        $emailSignataire = new SendCcMailJob(
+//                            [
+////                                'id_sending' => $request->id,
+//                                'email' => $s['email'],
+//                                'mail_detail' => [
+//                                    'name' => $s['name'],
+//                                    'doc_title' => $doc->title,
+//                                    'sending_auth' => Auth::user()->name,
+//                                    'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
+//                                ]
+//                            ]
+//                        );
+//
+//                        $this->dispatch($emailSignataire);
+//                    }
+//                }
+//
+//                $send->save();
 
             }
 
         }
 
-        return $this->sendResponse(new StatutSendingResource($statut), 'Sending statut updated successfully.');
+        //return $this->sendResponse(new StatutSendingResource($statut), 'Sending statut updated successfully.');
     }
 
     public function downloadTheSignedFile($id_sending)
