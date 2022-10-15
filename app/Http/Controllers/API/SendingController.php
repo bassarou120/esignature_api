@@ -1166,7 +1166,7 @@ class SendingController extends BaseController
                             }
                             else{
                                 $tmp = public_path('/previews/tempimg.png');
-                                print_r($all_answer[$index]);
+                                print_r($all_answer[$index]->value);
                                 $dataURI    = $all_answer[$index]->value;
                                 $dataPieces = explode(',',$dataURI);
                                 $encodedImg = $dataPieces[1];
