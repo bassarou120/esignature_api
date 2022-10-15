@@ -1173,7 +1173,6 @@ class SendingController extends BaseController
                                 {
                                     if( file_put_contents($tmp,$decodedImg)!==false )
                                     {
-                                        echo $w->type_widget.'          '.$all_answer[$index]->value.'              ';
                                         $pdf->Image($tmp,$w->positionX*200/500, $w->positionY*200/500,(explode('px',$w->width)[0]*200/500),explode('px',$w->height)[0]*200/500);
                                     }
                                 }
