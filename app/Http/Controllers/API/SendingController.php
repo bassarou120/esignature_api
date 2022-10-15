@@ -1138,11 +1138,10 @@ class SendingController extends BaseController
 
                 include base_path("vendor/autoload.php");
                 $pdf = new FPDI();
-                $pagecount = $pdf->setSourceFile($the_modifying_file);
+                $pdf->setSourceFile($the_modifying_file);
 
                 $pdf->SetFontSize($send->police);
                 $pdf->SetFont('Helvetica');
-               // $pdf->SetTextColor(0,0,255);
 
                 $widget=json_decode($send->configuration);
 
