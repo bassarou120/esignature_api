@@ -1157,13 +1157,16 @@ class SendingController extends BaseController
                             }
                             else{
                                 $index= $this->getAnswerWithWidget($w->widget_id,$all_answer);
+
                             }
+                            echo $index.'           ';
                             if($w->type_widget !='certificat' && $w->type_widget !='image' && $w->type_widget !='signature'){
                                 $pdf->SetXY($w->positionX*200/500, $w->positionY*200/500);
                                 $pdf->Write(0, $all_answer[$index]->value);
                             }
                             else{
                                 $tmp = public_path('/previews/tempimg.png');
+                                echo 'valeur:'.$all_answer[$index];
                                 $dataURI    = $all_answer[$index]->value;
                                 $dataPieces = explode(',',$dataURI);
                                 $encodedImg = $dataPieces[1];
