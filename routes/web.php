@@ -40,6 +40,7 @@ Route::get('/', function () {
 // Authentification
 Route::get('pdf_test', [SendingController::class, 'test_for_doc'])->name('pdf');
 Route::get('pdf_test_fpdf', [SendingController::class, 'test_with_fpdf'])->name('pdf_1');
+Route::get('pdf_with_img', [SendingController::class, 'test_with_img'])->name('img_1');
 
 Route::group(['prefix' => 'admins', 'middleware' => ['guest:admin'] ], function () {
     Route::post('password/forgot-password', [AdminController::class, 'sendResetLinkResponseCustomer'])->name('passwords.sent.admin');

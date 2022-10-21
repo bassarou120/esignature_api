@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\API\BaseController as BaseController;
+use App\Models\Member;
 use App\Models\User;
 use App\Notifications\NewRegistration;
 use Illuminate\Auth\Events\PasswordReset;
@@ -68,6 +69,8 @@ class Authentification extends BaseController
             'phone_number' => 'nullable|unique:users,phone_number',
             'entreprise' => 'nullable|string',
             'password' => 'required|string|min:8|confirmed',
+            'member_id' => 'nullable|numeric',
+
         ]);
         if ($validator->fails()) {
             return $this->sendError('Validation Error.', $validator->errors());
@@ -75,6 +78,14 @@ class Authentification extends BaseController
         $input = $request->all();
         $input['password'] = bcrypt($input['password']);
         $user = User::create($input);
+
+        if(isset($request->member_id)){
+            if($request->member_id !=''){
+             $member=Member::find($request->member_id);
+             $member->membre=$user->id;
+             $member->save();
+            }
+        }
 
         $ciphering = "AES-128-CTR";
 

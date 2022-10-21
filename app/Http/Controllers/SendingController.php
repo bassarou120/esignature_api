@@ -142,6 +142,23 @@ class SendingController extends Controller
         $pdf->Output();
     }
 
+    public function test_with_img(){
+        header("Content-type: image/jpeg");
+        $imgPath = public_path('previews/1665840282/1.jpeg');
+        $image = imagecreatefromjpeg($imgPath);
+        $color = imagecolorallocate($image, 255, 0, 0);
+        $string = "http://recentsolutions.net";
+        $fontSize = 12;
+//        $x = 526.65625;
+//        $y = 248.734375;
+
+        $x =248.734375 ;
+        $y =526.65625 ;
+//        $x = 115;
+//        $y = 185;
+        imagestring($image, $fontSize, $x, $y, $string, $color);
+        imagejpeg($image);
+    }
     /**
      * Show the form for creating a new resource.
      *

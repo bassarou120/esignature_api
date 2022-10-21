@@ -20,6 +20,7 @@ class Member extends Model
         'name',
         'email',
         'role',
-        'id_user'
+        'id_user',
+        'membre'
     ];
 }

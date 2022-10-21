@@ -82,6 +82,12 @@ class StatuesSeeder extends Seeder
                 'created_at'      => '2022-07-08 14:23:56',
                 'updated_at'      => '2022-07-08 14:23:56',
             ],
+            [
+                'name' => 'REVOKE',
+                'description' => 'Validataire rejette document',
+                'created_at'      => '2022-07-08 14:23:56',
+                'updated_at'      => '2022-07-08 14:23:56',
+            ],
         ]);
     }
 }

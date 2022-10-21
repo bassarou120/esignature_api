@@ -23,6 +23,9 @@ class Member extends JsonResource
             'user' =>[
                 $this->users->find($this->id_user)
             ],
+            'membre' =>[
+                $this->users->find($this->membre)
+            ],
             'created_at' => c::createFromFormat('Y-m-d H:i:s', $this->created_at)->format('d/m/Y H:i:s') ,
             'updated_at' => c::createFromFormat('Y-m-d H:i:s', $this->updated_at)->format('d/m/Y H:i:s') ,
         ];

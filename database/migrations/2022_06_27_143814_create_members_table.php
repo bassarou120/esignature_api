@@ -16,11 +16,13 @@ class CreateMembersTable extends Migration
         Schema::create('members', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('id_user');
+            $table->unsignedBigInteger('membre');
             $table->string('name')->nullable();
             $table->string('email');
             $table->enum('role',['Administrateur','Membre'])->default('Membre');
             $table->timestamps();
             $table->foreign('id_user')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('membre')->references('id')->on('users')->onDelete('cascade');
 
         });
     }

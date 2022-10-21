@@ -290,7 +290,7 @@
                         <tr>
                             <td class="logo" style="text-align: center;">
                                 <h1><a href="#">E-Signature</a></h1>
-                                <img src="[$app_url]/api/sendings/mail/opened/[$id_sending]/[$id_signataire]" alt="opened"  style="display: none">
+                                <img src="[$app_url]/api/sendings/mail/opened/[$id_sending]/[$id_validataire]" alt="opened"  style="display: none">
                             </td>
                         </tr>
                     </table>

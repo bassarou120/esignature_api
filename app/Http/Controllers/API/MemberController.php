@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\API\BaseController as BaseController;
+use App\Jobs\NewMember;
 use App\Models\Group;
 use App\Models\Member;
 use App\Http\Resources\Member as MemberResource;
+use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
 
 class MemberController extends BaseController
@@ -130,9 +133,24 @@ class MemberController extends BaseController
         $input['id_user']=Auth::id();
 
         try {
-            $member = Member::updateOrCreate(
-                ['id' => $request->id],$input
-            );
+            $user = User::where('email',$request->email)->first();
+            if (is_null($user)){
+                $member = Member::updateOrCreate(
+                    ['id' => $request->id],$input
+                );
+                $notif = new NewMember(
+                    [
+                        'email' => $request->email,
+                        'id_member'=>$member->id,
+                        'sending_auth'=>Auth::user()->name
+                    ]
+                );
+                $this->dispatch($notif);
+            }
+            else{
+                return $this->sendError('Email dejà pris',[],500);
+            }
+
         }catch (QueryException $e){
             return $this->sendError('Database error', $validator->errors(),500);
 
@@ -160,6 +178,24 @@ class MemberController extends BaseController
 
     }
 
+    public function MemberAccepteRequest($id){
+        $member = Member::find($id);
+        $email = $member->email; ;
+        $e=base64_encode($member->email);
+        $user = User::where('email',$email)->first();
+
+        if(is_null($user)){
+          //  if(Auth::user()->email != $email){
+                $url=env('FRONT_URL').'/register?email='.$e.'&id='.$id;
+                return Redirect::to($url);
+           // }
+        }
+        else{
+            $url=env('FRONT_URL').'/login?id='.$id;
+            return Redirect::to($url);
+        }
+
+    }
     /**
      * Show the form for editing the specified resource.
      *

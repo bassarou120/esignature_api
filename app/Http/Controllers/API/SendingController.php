@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\API\BaseController as BaseController;
+use App\Jobs\NotifyDocSignedToDocAuthor;
 use App\Jobs\SendCcMailJob;
 use App\Jobs\SendSignataireMailJob;
 use App\Jobs\SendValidatorMailJob;
@@ -356,6 +357,10 @@ class SendingController extends BaseController
         return $this->sendResponse(new SendingResource($sending), 'Sending retrieved successfully.');
     }
 
+    public function getSendingInfoPublic($id_sendind){
+        $sending = Sending::find($id_sendind);
+        return $this->sendResponse(new SendingResource($sending), 'Sending retrieved successfully.');
+    }
 
     public function sending_signataire_statut($id)
     {
@@ -428,12 +433,11 @@ class SendingController extends BaseController
         return $this->sendResponse(StatutSendingResource::collection($signataire_statut), 'Sending validataire statues retrieved successfully.');
     }
 
-
     public function search($value)
     {
         $signataire_statut = Statut_Sending::join('signataires', 'statut__sendings.id_signataire', '=', 'signataires.id')
             ->join('statuses', 'statut__sendings.id_statut', '=', 'statuses.id')
-            ->where('statut__sendings.id_sending', $id)
+            ->where('statut__sendings.id_sending', $value)
             ->where('signataires.type', 'Validataire')
             ->whereRaw('statut__sendings.id IN (SELECT MAX(statut__sendings.id ) FROM statut__sendings GROUP BY statut__sendings.id_signataire)')
             ->get();
@@ -587,21 +591,6 @@ class SendingController extends BaseController
             $save_member = Contact::insert($signataire_only_array);
         }catch (QueryException $e){}
 
-
-        //register statut sending by signataire
-/*        $statut_sending = [];
-        for ($i = 0; $i < sizeof($save_signataire); $i++) {
-            array_push($statut_sending, [
-                'id_sending' => $request->id,
-                'id_signataire' => $save_signataire[$i]['id'],
-                'id_statut' => EN_COURS,
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ]);
-        }
-        $save_statut_sending_by_signataire = Statut_Sending::insert($statut_sending);*/
-
-
         // register persons who must receive doc copy
         $cc_persons = json_decode($request->cc);
         $cc_persons_array = [];
@@ -629,7 +618,7 @@ class SendingController extends BaseController
 
         foreach ($save_signataire as $s) {
             if ($s['type'] == 'Signataire') {
-                $statut_sending =new Statut_Sending;
+
                 $emailSignataire = new SendSignataireMailJob(
                     [
                         'id_sending' => $request->id,
@@ -646,20 +635,30 @@ class SendingController extends BaseController
                             'preview' => $doc_info->preview,
                         ]
                     ]
-                    //$statut_sending->toArray()
+
                 );
                 $this->dispatch($emailSignataire);
-            } else {
+            }
+            /*else {
                 $emailValidataire = new SendValidatorMailJob(
                     [
                         'id_sending' => $request->id,
-                        'id_signataire' => $s['id'],
-                        'validataires' => $validataire_only_array,
+                        'id_validataire' => $s['id'],
+                        'email' => $s['email'],
                         'subject' => $request->objet == null ? 'Validation requise' : $request->objet,
+                        'message' => $request->message == null ? '' : $request->message,
                         'view' => 'validataire_mail_view',
-                    ]);
+                        'mail_detail' => [
+                            'name' => $s['name'],
+                            'doc_title' => $doc_info->title,
+                            'sending_auth' => Auth::user()->name,
+                            'sending_expiration' => $doc_id->expiration,
+                            'preview' => $doc_info->preview,
+                        ]
+                    ]
+                );
                 $this->dispatch($emailValidataire);
-            }
+            }*/
         }
 
         $sending->nbre_signataire = $count_signataire;
@@ -670,6 +669,382 @@ class SendingController extends BaseController
         } catch (QueryException $ex) {
             return $this->sendError('Error while updating data', []);
         }
+        return $this->sendResponse(new SendingResource($sending), 'Sending updated successfully.');
+
+    }
+
+    public function sendModelToSignataire(Request $request){
+        $input = $request->all();
+
+        $validator = Validator::make($input, [
+            'id' => 'required|numeric',
+            'signataire' => 'required|string',
+            'objet' => 'nullable|string',
+            'message' => 'nullable|string',
+            'expiration' => 'required|string',
+            'rappel' => 'required|string',
+        ]);
+
+        $fieldNames = array(
+            'signataire' => 'Signataires',
+            'objet' => 'Objet',
+            'message' => 'Message',
+            'expiration' => 'Expiration',
+            'rappel' => 'Rappel'
+        );
+
+        $validator->setAttributeNames($fieldNames);
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors(), 400);
+        }
+
+        $s = Sending::find($request->id);
+        $sending = $s->replicate();
+        $sending->created_at = Carbon::now();
+        $sending->updated_at = Carbon::now();
+
+        $document = Document::find($sending->id_document);
+
+        $newDocument = $document->replicate();
+        $newTitle = $document->title;
+        $newDocument->title = $newTitle;
+
+        $newDocument->created_at = Carbon::now();
+        $newDocument->updated_at = Carbon::now();
+
+        $preview_dir = explode('/',$newDocument->preview)[0] ;
+        $time = time();
+        File::copyDirectory( public_path('previews/'.$preview_dir), public_path('previews/'.$time));
+        File::copy(public_path('documents/').$newDocument->file, public_path('documents/').$time.'.pdf');
+
+        $newDocument->file = $time.'.pdf';
+        $newDocument->preview = $time.'/1.jpeg';
+        $newDocument->save();
+        $sending->id_document = $newDocument->id;
+        $sending->save();
+
+        // update sending with objet and message
+        $sending->message = $request->message;
+        $sending->objet = $request->objet;
+
+        if(!in_array($request->rappel,['Quotidien','Hebdomadaire','Aucun','Personnalisé'])){
+            $sending->callback = 'Personnalisé';
+            $sending->callback_nbre = $request->rappel;
+        }
+        else{
+            $sending->callback = $request->rappel;
+        }
+
+        if(!in_array($request->expiration,['Aucun','Personnalisé'])){
+            $sending->expiration = 'Personnalisé';
+            $sending->expiration_nbre = $request->expiration;
+        }
+        else{
+            $sending->expiration = $request->expiration;
+        }
+
+        $sending->is_registed = 1;
+        $sending->register_as_model = 0;
+        $sending->is_config = 1;
+        $sending->last_callback_date = date('Y-m-d H:i:s');
+
+        //register signataire
+
+        $signataire = json_decode($request->signataire);
+
+        $get_signataire_from_db =Signataire::where('id_sending',$request->id)->get();
+
+        //creation des signataires de l'envois
+        $genaral_widget=[];
+        $saved_signataire =[];
+        $count_signataire=0;
+        if(!is_null($get_signataire_from_db)){
+            for($i=0;$i< sizeof($get_signataire_from_db);$i++){
+
+                if(isset($get_signataire_from_db[$i]->id) && $get_signataire_from_db[$i]->id == $signataire[$i]->id && $get_signataire_from_db[$i]->type=='Signataire'){
+
+                    $w =json_decode($get_signataire_from_db[$i]->widget);
+                    $new_widget =[];
+                    foreach ($w as $r){
+                        $r->signataire = $signataire[$i]->name;
+                        array_push($new_widget,$r);
+                        array_push($genaral_widget,$r);
+                    }
+
+                    $new_signataire= Signataire::create([
+                        'id_sending'=>$sending->id,
+                        'name'=>$signataire[$i]->name,
+                        'email'=>$signataire[$i]->email,
+                        'type'=>'Signataire',
+                        'widget'=>json_encode($new_widget)
+                    ]);
+
+                    array_push($saved_signataire,[
+                        'id'=>$new_signataire->id,
+                        'name'=>$signataire[$i]->name,
+                        'email'=>$signataire[$i]->email,
+                        'type'=>'Signataire'
+                    ]);
+                    $count_signataire++;
+                }
+                else{
+                    $new_signataire= Signataire::create([
+                        'id_sending'=>$sending->id,
+                        'name'=>$get_signataire_from_db[$i]->name,
+                        'email'=>$get_signataire_from_db[$i]->email,
+                        'type'=>$get_signataire_from_db[$i]->type,
+                        'widget'=>'',
+                    ]);
+                    array_push($saved_signataire,[
+                        'id'=>$new_signataire->id,
+                        'name'=>$get_signataire_from_db[$i]->name,
+                        'email'=>$get_signataire_from_db[$i]->email,
+                        'type'=>$get_signataire_from_db[$i]->type
+                    ]);
+                }
+            }
+
+        }
+
+        //Mettre à jour les widget généraux
+
+         $sending->configuration=json_encode($genaral_widget);
+         $sending->nbre_signataire = $count_signataire;
+
+         $sending->save();
+
+        //Envois des mail respectif
+
+        foreach ($saved_signataire as $s) {
+            if ($s['type'] == 'Signataire') {
+                $emailSignataire = new SendSignataireMailJob(
+                    [
+                        'id_sending' => $sending->id,
+                        'id_signataire' => $s['id'],
+                        'email' => $s['email'],
+                        'subject' => $request->objet == null ? 'Signature requise' : $request->objet,
+                        'message' => $request->message == null ? '' : $request->message,
+                        'view' => 'signataire_mail_view',
+                        'mail_detail' => [
+                            'name' => $s['name'],
+                            'doc_title' => $newDocument->title,
+                            'sending_auth' => Auth::user()->name,
+                            'sending_expiration' => $sending->expiration,
+                            'preview' => $newDocument->preview,
+                        ]
+                    ]
+                );
+                $this->dispatch($emailSignataire);
+            } else {
+                $emailValidataire = new SendValidatorMailJob(
+                    [
+                        'id_sending' => $sending->id,
+                        'id_validataire' => $s['id'],
+                        'email' => $s['email'],
+                        'subject' => $request->objet == null ? 'Validation requise' : $request->objet,
+                        'message' => $request->message == null ? '' : $request->message,
+                        'view' => 'signataire_mail_view',
+                        'mail_detail' => [
+                            'name' => $s['name'],
+                            'doc_title' => $newDocument->title,
+                            'sending_auth' => Auth::user()->name,
+                            'sending_expiration' => $sending->expiration,
+                            'preview' => $newDocument->preview,
+                        ]
+                    ]
+                    );
+                $this->dispatch($emailValidataire);
+            }
+        }
+
+        return $this->sendResponse(new SendingResource($sending), 'Sending updated successfully.');
+
+    }
+
+    public function shareModelWithMember(Request $request){
+        $input = $request->all();
+
+        $validator = Validator::make($input, [
+            'id' => 'required|numeric',
+            'signataire' => 'required|string',
+            'objet' => 'nullable|string',
+            'message' => 'nullable|string',
+            'expiration' => 'required|string',
+            'rappel' => 'required|string',
+        ]);
+
+        $fieldNames = array(
+            'signataire' => 'Signataires',
+            'objet' => 'Objet',
+            'message' => 'Message',
+            'expiration' => 'Expiration',
+            'rappel' => 'Rappel'
+        );
+
+        $validator->setAttributeNames($fieldNames);
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors(), 400);
+        }
+
+        $s = Sending::find($request->id);
+        $sending = $s->replicate();
+        $sending->created_at = Carbon::now();
+        $sending->updated_at = Carbon::now();
+
+        $document = Document::find($sending->id_document);
+
+        $newDocument = $document->replicate();
+        $newTitle = $document->title;
+        $newDocument->title = $newTitle;
+
+        $newDocument->created_at = Carbon::now();
+        $newDocument->updated_at = Carbon::now();
+
+        $preview_dir = explode('/',$newDocument->preview)[0] ;
+        $time = time();
+        File::copyDirectory( public_path('previews/'.$preview_dir), public_path('previews/'.$time));
+        File::copy(public_path('documents/').$newDocument->file, public_path('documents/').$time.'.pdf');
+
+        $newDocument->file = $time.'.pdf';
+        $newDocument->preview = $time.'/1.jpeg';
+        $newDocument->save();
+        $sending->id_document = $newDocument->id;
+        $sending->save();
+
+        // update sending with objet and message
+        $sending->message = $request->message;
+        $sending->objet = $request->objet;
+
+        if(!in_array($request->rappel,['Quotidien','Hebdomadaire','Aucun','Personnalisé'])){
+            $sending->callback = 'Personnalisé';
+            $sending->callback_nbre = $request->rappel;
+        }
+        else{
+            $sending->callback = $request->rappel;
+        }
+
+        if(!in_array($request->expiration,['Aucun','Personnalisé'])){
+            $sending->expiration = 'Personnalisé';
+            $sending->expiration_nbre = $request->expiration;
+        }
+        else{
+            $sending->expiration = $request->expiration;
+        }
+
+        $sending->is_registed = 1;
+        $sending->register_as_model = 0;
+        $sending->is_config = 1;
+        $sending->last_callback_date = date('Y-m-d H:i:s');
+
+        //register signataire
+
+        $signataire = json_decode($request->signataire);
+
+        $get_signataire_from_db =Signataire::where('id_sending',$request->id)->get();
+
+        //creation des signataires de l'envois
+        $genaral_widget=[];
+        $saved_signataire =[];
+        $count_signataire=0;
+        if(!is_null($get_signataire_from_db)){
+            for($i=0;$i< sizeof($get_signataire_from_db);$i++){
+
+                if(isset($get_signataire_from_db[$i]->id) && $get_signataire_from_db[$i]->id == $signataire[$i]->id && $get_signataire_from_db[$i]->type=='Signataire'){
+
+                    $w =json_decode($get_signataire_from_db[$i]->widget);
+                    $new_widget =[];
+                    foreach ($w as $r){
+                        $r->signataire = $signataire[$i]->name;
+                        array_push($new_widget,$r);
+                        array_push($genaral_widget,$r);
+                    }
+
+                    $new_signataire= Signataire::create([
+                        'id_sending'=>$sending->id,
+                        'name'=>$signataire[$i]->name,
+                        'email'=>$signataire[$i]->email,
+                        'type'=>'Signataire',
+                        'widget'=>json_encode($new_widget)
+                    ]);
+
+                    array_push($saved_signataire,[
+                        'id'=>$new_signataire->id,
+                        'name'=>$signataire[$i]->name,
+                        'email'=>$signataire[$i]->email,
+                        'type'=>'Signataire'
+                    ]);
+                    $count_signataire++;
+                }
+                else{
+                    $new_signataire= Signataire::create([
+                        'id_sending'=>$sending->id,
+                        'name'=>$get_signataire_from_db[$i]->name,
+                        'email'=>$get_signataire_from_db[$i]->email,
+                        'type'=>$get_signataire_from_db[$i]->type,
+                        'widget'=>'',
+                    ]);
+                    array_push($saved_signataire,[
+                        'id'=>$new_signataire->id,
+                        'name'=>$get_signataire_from_db[$i]->name,
+                        'email'=>$get_signataire_from_db[$i]->email,
+                        'type'=>$get_signataire_from_db[$i]->type
+                    ]);
+                }
+            }
+
+        }
+
+        //Mettre à jour les widget généraux
+
+         $sending->configuration=json_encode($genaral_widget);
+         $sending->nbre_signataire = $count_signataire;
+
+         $sending->save();
+
+        //Envois des mail respectif
+
+        foreach ($saved_signataire as $s) {
+            if ($s['type'] == 'Signataire') {
+                $emailSignataire = new SendSignataireMailJob(
+                    [
+                        'id_sending' => $sending->id,
+                        'id_signataire' => $s['id'],
+                        'email' => $s['email'],
+                        'subject' => $request->objet == null ? 'Signature requise' : $request->objet,
+                        'message' => $request->message == null ? '' : $request->message,
+                        'view' => 'signataire_mail_view',
+                        'mail_detail' => [
+                            'name' => $s['name'],
+                            'doc_title' => $newDocument->title,
+                            'sending_auth' => Auth::user()->name,
+                            'sending_expiration' => $sending->expiration,
+                            'preview' => $newDocument->preview,
+                        ]
+                    ]
+                );
+                $this->dispatch($emailSignataire);
+            } else {
+                $emailValidataire = new SendValidatorMailJob(
+                    [
+                        'id_sending' => $sending->id,
+                        'id_validataire' => $s['id'],
+                        'email' => $s['email'],
+                        'subject' => $request->objet == null ? 'Validation requise' : $request->objet,
+                        'message' => $request->message == null ? '' : $request->message,
+                        'view' => 'signataire_mail_view',
+                        'mail_detail' => [
+                            'name' => $s['name'],
+                            'doc_title' => $newDocument->title,
+                            'sending_auth' => Auth::user()->name,
+                            'sending_expiration' => $sending->expiration,
+                            'preview' => $newDocument->preview,
+                        ]
+                    ]
+                    );
+                $this->dispatch($emailValidataire);
+            }
+        }
+
         return $this->sendResponse(new SendingResource($sending), 'Sending updated successfully.');
 
     }
@@ -766,7 +1141,6 @@ class SendingController extends BaseController
         }
 
         $save_signataire = [];
-        // return response()->json($signataires_array);
 
         foreach ($signataires_array as $sa) {
 
@@ -888,7 +1262,7 @@ class SendingController extends BaseController
     public function getSendingWidgetBySignataire($id_sending,$id_signataire){
         $signataire = Signataire::where('id_sending',$id_sending)
             ->where('id',$id_signataire)
-            ->where('type','Signataire')
+//            ->where('type','Signataire')
             ->first(['*']);
         if(is_null($signataire)){
             return $this->sendError([],'No signaitaire found');
@@ -897,6 +1271,18 @@ class SendingController extends BaseController
             return $this->sendResponse(new SignataireResource($signataire), 'Signataire retrieved successfully.');
 
 //            return $this->sendResponse(SignataireResource::collection($signataire), 'Signataire retrieved successfully.');
+        }
+    }
+
+    public function getSignataireWidgetPublic($id_sending,$id_signataire){
+        $signataire = Signataire::where('id_sending',$id_sending)
+            ->where('id',$id_signataire)
+            ->first(['*']);
+        if(is_null($signataire)){
+            return $this->sendError([],'No signaitaire found');
+        }
+        else{
+            return $this->sendResponse(new SignataireResource($signataire), 'Signataire retrieved successfully.');
         }
     }
 
@@ -1096,10 +1482,14 @@ class SendingController extends BaseController
 
         $signataire->save();
 
+        $send = Sending::join('users', 'sendings.created_by', '=', 'users.id')
+            ->where('id',$request->id_sending)
+            ->first(['sendings.*','users.name','users.email']);
+
         $statut = Statut_Sending::create([
             'id_sending' => $request->id_sending,
-            'id_signataire' => $request->id_signataire,
-            'id_statut' => SIGNER
+             'id_signataire' => $request->id_signataire,
+             'id_statut' => $signataire->type=='Signataire' ? SIGNER : VALIDER
         ]);
 
         $signataires = Signataire::where('id_sending',$request->id_sending)->where('type','Signataire')->get();
@@ -1113,29 +1503,248 @@ class SendingController extends BaseController
                                                ->orderBy('created_at','DESC')
                                                ->first();
 
-                if($last_statut->id_statut!==SIGNER){
-                    $one = $one * 0 ;
-                    break;
+                if(!is_null($last_statut)){
+                    if($s->type=='Signataire'){
+                        if($last_statut->id_statut!==SIGNER){
+                            $one = $one * 0 ;
+                            break;
+                        }
+                        else{
+                            $one = $one * 1 ;
+                        }
+                    }
+
+                   /* if($s->type=='Validataire'){
+                        if($last_statut->id_statut!==VALIDER){
+                            $one = $one * 0 ;
+                            break;
+                        }
+                        else{
+                            $one = $one * 1 ;
+                        }
+                    }*/
                 }
-                else{
-                    $one = $one * 1 ;
-                }
+
                 $all_answer = array_merge($all_answer,json_decode($s->signataire_answers) );
             }
-
+            $send->response = json_encode($all_answer);
             if($one == 1){
-                $send = Sending::find($request->id_sending);
-                $send->statut = FINIR;
+
+                $doc = Document::find($send->id_document);
+                $doc->is_signed = 1 ;
+                $nbre_page = $doc->nbre_page;
+
+                $validataire = Signataire::where('id_sending',$request->id_sending)->where('type','Validataire')->get();
                 $send->response = json_encode($all_answer);
+                if(!is_null($validataire)){
+                    foreach ($validataire as $s){
+                        $emailValidataire = new SendValidatorMailJob(
+                            [
+                                'id_sending' => $request->id_sending,
+                                'id_validataire' => $s->id,
+                                'email' => $s->email,
+                                'subject' => $send->objet == null ? 'Validation requise' : $send->objet,
+                                'message' => $send->message == null ? '' : $send->message,
+                                'view' => 'validataire_mail_view',
+                                'mail_detail' => [
+                                    'name' => $s['name'],
+                                    'doc_title' => $doc->title,
+                                    'sending_auth' => Auth::user()->name,
+                                    'sending_expiration' => $send->expiration,
+                                    'preview' => $doc->preview,
+                                ]
+                            ]
+                        );
+                        $this->dispatch($emailValidataire);
+                    }
+                }
+                else{
+                    $send->statut = FINIR;
+
+                    $the_modifying_file = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_copy.pdf');
+
+                    // add_answers_to_document
+                    include base_path("vendor/autoload.php");
+                    $pdf = new FPDI();
+                    $pdf->setSourceFile($the_modifying_file);
+
+                    $pdf->SetFontSize($send->police);
+                    $pdf->SetFont('Helvetica');
+
+                    $widget=json_decode($send->configuration);
+
+                    for($i=1;$i<=$nbre_page;$i++){
+                        $pdf->AddPage();
+                        ${"template_" . $i} =  $pdf->importPage($i);
+                        $pdf->useTemplate(${"template_" . $i},['adjustPageSize' => true]);
+                        foreach ($widget as $w){
+                            if($i==$w->page){
+                                if($w->type_widget=='signature'){
+                                    $index= $this->getAnswerWithWidget('signature',$all_answer);
+                                }
+                                else{
+                                    $index= $this->getAnswerWithWidget($w->widget_id,$all_answer);
+
+                                }
+                                if($w->type_widget !='certificat' && $w->type_widget !='image' && $w->type_widget !='signature'){
+                                    $pdf->SetXY($w->positionX*200/500, $w->positionY*200/500);
+                                    $pdf->Write(0, $all_answer[$index]->value);
+                                }
+                                else{
+                                    $tmp = public_path('/previews/tempimg.png');
+                                    $dataURI    = $all_answer[$index]->value;
+                                    $dataPieces = explode(',',$dataURI);
+                                    $encodedImg = $dataPieces[1];
+                                    $decodedImg = base64_decode($encodedImg);
+
+                                    if( $decodedImg!==false )
+                                    {
+                                        if( file_put_contents($tmp,$decodedImg)!==false )
+                                        {
+                                            $pdf->Image($tmp,$w->positionX*200/500, $w->positionY*200/500,(explode('px',$w->width)[0]*200/500),explode('px',$w->height)[0]*200/500);
+                                        }
+                                    }
+                                    unlink($tmp);
+                                }
+                            }
+                        }
+                    }
+
+                    $pdf->Output(public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signer.pdf'),'F');
+
+                    //send notification to author
+                    $notif = new NotifyDocSignedToDocAuthor(
+                        [
+                            'email' => $send->email,
+                            'doc_title' => $doc->title,
+                            'sending_auth' => $send->name,
+                            'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
+
+                        ]
+                    );
+
+                    $this->dispatch($notif);
+
+                    //send cc of document
+                    $cc = Signataire::where('type','CC')->where('id_sending',$request->id_sending)->get();
+                    if(!is_null($cc)){
+                        foreach ($cc as $s) {
+                            $emailSignataire = new SendCcMailJob(
+                                [
+//                                'id_sending' => $request->id,
+                                    'email' => $s['email'],
+                                    'mail_detail' => [
+                                        'name' => $s['name'],
+                                        'doc_title' => $doc->title,
+                                        'sending_auth' => Auth::user()->name,
+                                        'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
+                                    ]
+                                ]
+                            );
+
+                            $this->dispatch($emailSignataire);
+                        }
+                    }
+                }
+
+            }
+            $send->save();
+        }
+
+        return $this->sendResponse(new StatutSendingResource($statut), 'Sending statut updated successfully.');
+
+    }
 
 
+
+    public function validateDocument(Request $request){
+        $input = $request->all();
+
+        $validator = Validator::make($input, [
+            'id_sending' => 'required|numeric',
+            'id_signataire' => 'required|numeric',
+            'answer' => 'required|string',
+            'mobile_info'=>'required'
+        ]);
+
+        $fieldNames = array(
+            'id_sending' => 'envois',
+            'id_signataire' => 'signataire',
+            'answer' => 'Réponse',
+            'mobile_info'=>'Mobile info'
+        );
+
+        $validator->setAttributeNames($fieldNames);
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors(), 400);
+        }
+
+        $signataire = Signataire::find($request->id_signataire);
+        $signataire ->signataire_answers = $request->answer;
+        $signataire ->mobile_info = $request->mobile_info;
+
+        $signataire->save();
+
+        $statut = Statut_Sending::create([
+            'id_sending' => $request->id_sending,
+            'id_signataire' => $request->id_signataire,
+            'id_statut' =>  VALIDER
+        ]);
+
+        $validataires = Signataire::where('id_sending',$request->id_sending)->where('type','Validataire')->get();
+
+        if(!is_null($validataires)){
+            $one = 1;
+            $all_answer = [];
+            foreach ($validataires as $v){
+                $last_statut = Statut_Sending::where('id_sending',$request->id_sending)
+                    ->where('id_signataire',$v->id)
+                    ->orderBy('created_at','DESC')
+                    ->first();
+
+                if(!is_null($last_statut)){
+                  /*  if($s->type=='Signataire'){
+                        if($last_statut->id_statut!==SIGNER){
+                            $one = $one * 0 ;
+                            break;
+                        }
+                        else{
+                            $one = $one * 1 ;
+                        }
+                    }*/
+
+                    if($v->type=='Validataire'){
+                        if($last_statut->id_statut!==VALIDER){
+                            $one = $one * 0 ;
+                            break;
+                        }
+                        else{
+                            $one = $one * 1 ;
+                        }
+                    }
+                }
+            }
+
+            $signataires = Signataire::where('id_sending',$request->id_sending)->where('type','Signataire')->get();
+
+            if(!is_null($signataires)){
+                foreach ($signataires as $s){
+                    $all_answer = array_merge($all_answer,json_decode($s->signataire_answers) ) ;
+                }
+            }
+            $send = Sending::join('users', 'sendings.created_by', '=', 'users.id')
+                ->where('id',$request->id_sending)
+                ->first(['sendings.*','users.name','users.email']);
+            $send->response = json_encode($all_answer);
+            if($one == 1){
+                $send->statut = FINIR;
                 $doc = Document::find($send->id_document);
                 $doc->is_signed = 1 ;
                 $nbre_page = $doc->nbre_page;
 
                 $the_modifying_file = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_copy.pdf');
 
-               // add_answers_to_document
+                // add_answers_to_document
 
                 include base_path("vendor/autoload.php");
                 $pdf = new FPDI();
@@ -1183,36 +1792,91 @@ class SendingController extends BaseController
                     }
                 }
                 $pdf->Output(public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signer.pdf'),'F');
-               // return response()->json('stop');
+                // return response()->json('stop');
+
+                //send notification to author
+                $notif = new NotifyDocSignedToDocAuthor(
+                    [
+                        'email' => $send->email,
+                        'doc_title' => $doc->title,
+                        'sending_auth' => $send->name,
+                        'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
+
+                    ]
+                );
+
+                $this->dispatch($notif);
 
                 //send cc of document
-//                $cc = Signataire::where('type','CC')->where('id_sending',$request->id_sending)->get();
-//                if(!is_null($cc)){
-//                    foreach ($cc as $s) {
-//                        $emailSignataire = new SendCcMailJob(
-//                            [
-////                                'id_sending' => $request->id,
-//                                'email' => $s['email'],
-//                                'mail_detail' => [
-//                                    'name' => $s['name'],
-//                                    'doc_title' => $doc->title,
-//                                    'sending_auth' => Auth::user()->name,
-//                                    'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
-//                                ]
-//                            ]
-//                        );
-//
-//                        $this->dispatch($emailSignataire);
-//                    }
-//                }
-//
-//                $send->save();
+                $cc = Signataire::where('type','CC')->where('id_sending',$request->id_sending)->get();
+                if(!is_null($cc)){
+                    foreach ($cc as $s) {
+                        $emailSignataire = new SendCcMailJob(
+                            [
+//                                'id_sending' => $request->id,
+                                'email' => $s['email'],
+                                'mail_detail' => [
+                                    'name' => $s['name'],
+                                    'doc_title' => $doc->title,
+                                    'sending_auth' => Auth::user()->name,
+                                    'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
+                                ]
+                            ]
+                        );
 
+                        $this->dispatch($emailSignataire);
+                    }
+                }
             }
+            $send->save();
+        }
+        return $this->sendResponse(new StatutSendingResource($statut), 'Sending statut updated successfully.');
+    }
 
+    public  function revokeDocument(Request $request) {
+
+        $input = $request->all();
+
+        $validator = Validator::make($input, [
+            'id_sending' => 'required|numeric',
+            'id_signataire' => 'required|numeric',
+            'answer' => 'required|string',
+            'mobile_info'=>'required'
+        ]);
+
+        $fieldNames = array(
+            'id_sending' => 'envois',
+            'id_signataire' => 'signataire',
+            'answer' => 'Réponse',
+            'mobile_info'=>'Mobile info'
+        );
+
+        $validator->setAttributeNames($fieldNames);
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error.', $validator->errors(), 400);
         }
 
-        //return $this->sendResponse(new StatutSendingResource($statut), 'Sending statut updated successfully.');
+        try {
+            $statut = Statut_Sending::create([
+                'id_sending' => $request->id_sending,
+                'id_signataire' => $request->id_signataire,
+                'id_statut' => REVOKE
+            ]);
+            $signataire = Signataire::find($request->id_signataire);
+            $signataire ->mobile_info = $request->mobile_info;
+            $signataire->save();
+
+            if($statut){
+                return $this->sendResponse(SignataireResource::collection($statut), 'Sending statut updated successfully.');
+            }
+            else{
+                return $this->sendError([], 'Error while saving statut');
+            }
+
+        }catch (QueryException $e){
+            return $this->sendError('Error while saving data');
+        }
+        //}
     }
 
     public function downloadTheSignedFile($id_sending)
