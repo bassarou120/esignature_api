@@ -15,6 +15,7 @@ use App\Models\Signataire;
 use App\Models\Statut_Sending;
 use Carbon\Carbon;
 use Carbon\Carbon as c;
+use FPDF;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -631,7 +632,7 @@ class SendingController extends BaseController
                             'name' => $s['name'],
                             'doc_title' => $doc_info->title,
                             'sending_auth' => Auth::user()->name,
-                            'sending_expiration' => $doc_id->expiration,
+                            'sending_expiration' => $doc_id->expiration !='Aucun' ? $doc_id->expiration : null,
                             'preview' => $doc_info->preview,
                         ]
                     ]
@@ -1483,7 +1484,7 @@ class SendingController extends BaseController
         $signataire->save();
 
         $send = Sending::join('users', 'sendings.created_by', '=', 'users.id')
-            ->where('id',$request->id_sending)
+            ->where('sendings.id',$request->id_sending)
             ->first(['sendings.*','users.name','users.email']);
 
         $statut = Statut_Sending::create([
@@ -1494,7 +1495,7 @@ class SendingController extends BaseController
 
         $signataires = Signataire::where('id_sending',$request->id_sending)->where('type','Signataire')->get();
 
-        if(!is_null($signataires)){
+        if(!is_null($signataires) && sizeof($signataires)!=0){
             $one = 1;
             $all_answer = [];
             foreach ($signataires as $s){
@@ -1536,7 +1537,7 @@ class SendingController extends BaseController
 
                 $validataire = Signataire::where('id_sending',$request->id_sending)->where('type','Validataire')->get();
                 $send->response = json_encode($all_answer);
-                if(!is_null($validataire)){
+                if(!is_null($validataire)  && sizeof($validataire) !=0){
                     foreach ($validataire as $s){
                         $emailValidataire = new SendValidatorMailJob(
                             [
@@ -1560,6 +1561,7 @@ class SendingController extends BaseController
                 }
                 else{
                     $send->statut = FINIR;
+                    $send->save();
 
                     $the_modifying_file = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_copy.pdf');
 
@@ -1570,10 +1572,63 @@ class SendingController extends BaseController
 
                     $pdf->SetFontSize($send->police);
                     $pdf->SetFont('Helvetica');
-
+                    $fontSize = 12;
                     $widget=json_decode($send->configuration);
 
+                    //$folder =explode($doc->preview,'/')[0];
+
+                   /* $pdf = new FPDF();
                     for($i=1;$i<=$nbre_page;$i++){
+                        $pdf->AddPage();
+
+                        foreach ($widget as $w){
+                            if($i==$w->page){
+                                if($w->type_widget=='signature'){
+                                    $index= $this->getAnswerWithWidget('signature',$all_answer);
+                                }
+                                else{
+                                    $index= $this->getAnswerWithWidget($w->widget_id,$all_answer);
+
+                                }
+                                header("Content-type: image/jpeg");
+                                $imgPath = public_path('previews/1665840282/'.$i.'jpeg');
+                                $image = imagecreatefromjpeg($imgPath);
+                                $color = imagecolorallocate($image, 0, 0, 0);
+
+                                if($w->type_widget !='certificat' && $w->type_widget !='image' && $w->type_widget !='signature'){
+                                    $string = $all_answer[$index]->value;
+
+                                    $x =$w->positionY ;
+                                    $y =$w->positionX ;
+
+                                    imagestring($image, $fontSize, $x, $y, $string, $color);
+                                    imagejpeg($image);
+
+                                    $pdf->Image($image,20,40,170,170);
+                                }
+                                else{
+                                    $tmp = public_path('/previews/tempimg.png');
+                                    $dataURI    = $all_answer[$index]->value;
+                                    $dataPieces = explode(',',$dataURI);
+                                    $encodedImg = $dataPieces[1];
+                                    $decodedImg = base64_decode($encodedImg);
+
+                                    if( $decodedImg!==false )
+                                    {
+                                        if( file_put_contents($tmp,$decodedImg)!==false )
+                                        {
+                                            $pdf->Image($tmp,$w->positionX*200/500, $w->positionY*200/500,(explode('px',$w->width)[0]*200/500),explode('px',$w->height)[0]*200/500);
+                                        }
+                                    }
+                                    unlink($tmp);
+                                }
+                            }
+                        }
+
+                    }*/
+
+                    for($i=1;$i<=$nbre_page;$i++){
+                       // return response()->json('start loop');
                         $pdf->AddPage();
                         ${"template_" . $i} =  $pdf->importPage($i);
                         $pdf->useTemplate(${"template_" . $i},['adjustPageSize' => true]);
@@ -1587,7 +1642,7 @@ class SendingController extends BaseController
 
                                 }
                                 if($w->type_widget !='certificat' && $w->type_widget !='image' && $w->type_widget !='signature'){
-                                    $pdf->SetXY($w->positionX*200/500, $w->positionY*200/500);
+                                    $pdf->SetXY($w->positionY*200/500, $w->positionX*200/500);
                                     $pdf->Write(0, $all_answer[$index]->value);
                                 }
                                 else{
@@ -1693,7 +1748,7 @@ class SendingController extends BaseController
 
         $validataires = Signataire::where('id_sending',$request->id_sending)->where('type','Validataire')->get();
 
-        if(!is_null($validataires)){
+        if(!is_null($validataires) && sizeof($validataires)!=0){
             $one = 1;
             $all_answer = [];
             foreach ($validataires as $v){
@@ -1727,7 +1782,7 @@ class SendingController extends BaseController
 
             $signataires = Signataire::where('id_sending',$request->id_sending)->where('type','Signataire')->get();
 
-            if(!is_null($signataires)){
+            if(!is_null($signataires) && sizeof($signataires)!=0){
                 foreach ($signataires as $s){
                     $all_answer = array_merge($all_answer,json_decode($s->signataire_answers) ) ;
                 }

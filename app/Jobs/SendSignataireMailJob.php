@@ -82,7 +82,7 @@ class SendSignataireMailJob implements ShouldQueue
                         $this->signataires['mail_detail']['name'],
                         $this->signataires['mail_detail']['sending_auth'],
                         $this->signataires['mail_detail']['doc_title'],
-                        isset($this->signataires['mail_detail']['sending_expiration']) ? 'Vous devriez faire cette action avant le '.$this->signataires['mail_detail']['sending_expiration'] : '' ,
+                        (isset($this->signataires['mail_detail']['sending_expiration']) && $this->signataires['mail_detail']['sending_expiration'] !='Aucun' ) ? 'Vous devriez faire cette action avant le '.$this->signataires['mail_detail']['sending_expiration'] : '' ,
                         $this->signataires['mail_detail']['preview'],
                         $this->signataires['id_sending'],
                         $this->signataires['id_signataire'],
