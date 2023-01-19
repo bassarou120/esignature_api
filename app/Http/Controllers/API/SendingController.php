@@ -1588,7 +1588,6 @@ class SendingController extends BaseController
                                 }
                                 else{
                                     $index= $this->getAnswerWithWidget($w->widget_id,$all_answer);
-
                                 }
                                 header("Content-type: image/jpeg");
                                 $imgPath = public_path('previews/1665840282/'.$i.'jpeg');
