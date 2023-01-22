@@ -1569,7 +1569,6 @@ class SendingController extends BaseController
                     include base_path("vendor/autoload.php");
                     $pdf = new FPDI();
                     $pdf->setSourceFile($the_modifying_file);
-
                     $pdf->SetFontSize($send->police);
                     $pdf->SetFont('Helvetica');
                     $fontSize = 12;
@@ -1630,7 +1629,11 @@ class SendingController extends BaseController
                        // return response()->json('start loop');
                         $pdf->AddPage();
                         ${"template_" . $i} =  $pdf->importPage($i);
-                        $pdf->useTemplate(${"template_" . $i},['adjustPageSize' => true]);
+                        $pdf->useTemplate(${"template_" . $i},
+                            [
+                                'adjustPageSize' => true,
+                                 'width'=>'205'
+                            ]);
                         foreach ($widget as $w){
                             if($i==$w->page){
                                 if($w->type_widget=='signature'){
@@ -1638,10 +1641,11 @@ class SendingController extends BaseController
                                 }
                                 else{
                                     $index= $this->getAnswerWithWidget($w->widget_id,$all_answer);
-
                                 }
                                 if($w->type_widget !='certificat' && $w->type_widget !='image' && $w->type_widget !='signature'){
-                                    $pdf->SetXY($w->positionY*200/500, $w->positionX*200/500);
+                                    $pdf->SetXY($w->positionX*205/753, $w->positionY*205/753);
+                                    //$pdf->SetXY($w->positionY*200/500, $w->positionX*200/500);
+                                    //$pdf->SetXY($w->positionY*200/500, $w->positionX*200/500);
                                     $pdf->Write(0, $all_answer[$index]->value);
                                 }
                                 else{
@@ -1655,7 +1659,8 @@ class SendingController extends BaseController
                                     {
                                         if( file_put_contents($tmp,$decodedImg)!==false )
                                         {
-                                            $pdf->Image($tmp,$w->positionX*200/500, $w->positionY*200/500,(explode('px',$w->width)[0]*200/500),explode('px',$w->height)[0]*200/500);
+                                            $pdf->Image($tmp,$w->positionX*200/753, $w->positionY*200/753,(explode('px',$w->width)[0]*200/753),explode('px',$w->height)[0]*200/753);
+                                            //$pdf->Image($tmp,$w->positionX*200/500, $w->positionY*200/500,(explode('px',$w->width)[0]*200/500),explode('px',$w->height)[0]*200/500);
                                         }
                                     }
                                     unlink($tmp);

@@ -90,6 +90,7 @@ class SendingController extends Controller
         $mpdf->Output();
     }
 
+
     public function test_with_fpdf(){
        // include "vendor/autoload.php";
         include base_path("vendor/autoload.php");
@@ -105,7 +106,7 @@ class SendingController extends Controller
         $pdf->AddPage();
 
 // Use the imported page as the template
-        $pdf->useTemplate($tpl);
+        $pdf->useTemplate($tpl,'0','0','205');
 
 // Set the default font to use
         $pdf->SetFont('Helvetica');
@@ -114,29 +115,29 @@ class SendingController extends Controller
 // $pdf->Cell( $width, $height, $text, $border, $fill, $align);
 
 // First box - the user's Name
-        $pdf->SetFontSize('30'); // set font size
-        $pdf->SetXY(100, 150); // set the position of the box
+        $pdf->SetFontSize('12'); // set font size
+        $pdf->SetXY(139.328125*205/753, 363.265625*205/753); // set the position of the box
        // $pdf->Cell(0, 10, 'Niraj Shah', 1, 0, 'C');
         $pdf->Write(0, 'Niraj Shah');
 
 // add the reason for certificate
 // note the reduction in font and different box position
-        $pdf->SetFontSize('20');
-        $pdf->SetXY(80, 105);
-        $pdf->Cell(100, 10, 'creating an awesome tutorial', 1, 0, 'C');
+//        $pdf->SetFontSize('20');
+//        $pdf->SetXY(80, 105);
+//        $pdf->Cell(100, 10, 'creating an awesome tutorial', 1, 0, 'C');
 
 // the day
-        $pdf->SetFontSize('20');
-        $pdf->SetXY(118,122);
-        $pdf->Cell(20, 10, date('d'), 1, 0, 'C');
+//        $pdf->SetFontSize('20');
+//        $pdf->SetXY(118,122);
+//        $pdf->Cell(20, 10, date('d'), 1, 0, 'C');
 
 // the month
-        $pdf->SetXY(160,122);
-        $pdf->Cell(30, 10, date('M'), 1, 0, 'C');
+//        $pdf->SetXY(160,122);
+//        $pdf->Cell(30, 10, date('M'), 1, 0, 'C');
 
 // the year, aligned to Left
-        $pdf->SetXY(200,122);
-        $pdf->Cell(20, 10, date('y'), 1, 0, 'L');
+//        $pdf->SetXY(200,122);
+//        $pdf->Cell(20, 10, date('y'), 1, 0, 'L');
 
 // render PDF to browser
         $pdf->Output();
@@ -144,7 +145,7 @@ class SendingController extends Controller
 
     public function test_with_img(){
         header("Content-type: image/jpeg");
-        $imgPath = public_path('previews/1665840282/1.jpeg');
+        $imgPath = public_path('previews/1674430228/1.jpeg');
         $image = imagecreatefromjpeg($imgPath);
         $color = imagecolorallocate($image, 255, 0, 0);
         $string = "http://recentsolutions.net";
@@ -152,8 +153,8 @@ class SendingController extends Controller
 //        $x = 526.65625;
 //        $y = 248.734375;
 
-        $x =248.734375 ;
-        $y =526.65625 ;
+        $x =653.328125 ;
+        $y =1174.734375 ;
 //        $x = 115;
 //        $y = 185;
         imagestring($image, $fontSize, $x, $y, $string, $color);
