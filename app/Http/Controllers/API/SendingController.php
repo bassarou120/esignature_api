@@ -1970,17 +1970,56 @@ class SendingController extends BaseController
     public function downloadTheProofFile($id_sending)
     {
         $sending = Sending::join('type__signatures','sendings.id_type_signature','=','type__signatures.id')
-                            ->where('id',$id_sending)
-                            ->get(['sendings.*','type__signatures.type']);
-        if($sending->statut==SIGNER && $sending->type=='simple' ){
+            ->join('users','sendings.created_by','=','users.id')
+            ->join('documents','sendings.id_document','=','documents.id')
+            ->where('sendings.id',$id_sending)
+            ->first(['sendings.*','type__signatures.type','users.name','users.email','documents.title','documents.file']);
+        if($sending->statut==FINIR && $sending->type=='avanced' ){
             $doc= Doc::find($sending->id_document);
             $filePath = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_proof.pdf');
-            $headers = ['Content-Type: application/pdf'];
-            $fileName = time().'.pdf';
-            return response()->download($filePath, $fileName, $headers);
+            if(!file_exists($filePath)){
+                header("Content-type: image/jpeg");
+                $imgPath = public_path('proof/tmp.jpeg');
+                $roboto =  public_path('proof/arial.ttf');
+                $roboto_bold =  public_path('proof/Roboto-Bold.ttf');
+                $image = imagecreatefromjpeg($imgPath);
+                $color = imagecolorallocate($image, 87, 87, 87);
+                $blue = imagecolorallocate($image, 41, 77, 135);
+                $green = imagecolorallocate($image, 157, 184, 139);
+
+                //email
+                imagettftext($image, 19, 0, 545, 450, $blue, $roboto_bold, $sending->email);
+                //Emetteur
+                imagettftext($image, 19, 0, 660, 692, $blue, $roboto_bold, $sending->name.' ('.$sending->email.')');
+                //Document
+                imagettftext($image, 19, 0, 660, 750, $blue, $roboto_bold, $sending->title.'.pdf');
+                //Size
+                imagettftext($image, 19, 0, 660, 808, $blue, $roboto_bold, (filesize(public_path('documents/'.$sending->file))/1000).' kB' );
+                //CRC du fichier
+                imagettftext($image, 19, 0, 660, 876, $color, $roboto_bold, '71e870c744474c0f5e27756c8dbb5e96' );
+                //CRC du fichier
+                imagettftext($image, 19, 0, 660, 935, $color, $roboto_bold, '1ffd36dc-88dc-444b-823a-7b900ea639b9' );
+                //Statut
+                imagettftext($image, 19, 0, 350, 1056, $green, $roboto_bold, 'COMPLÉTÉ' );
+                //Date
+                imagettftext($image, 19, 0, 1050, 1056, $color, $roboto_bold, c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('d/m/Y H:i:s'));
+                //Date
+                imagettftext($image, 19, 0, 1030, 1240, $color, $roboto_bold, c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('H:i:s').' le '.c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('d/m/Y'));
+                //***Date
+                imagettftext($image, 18, 0, 480, 1380, $color, $roboto_bold, '********************************');
+
+                $tmp_dir = public_path('/previews/test_proof.jpeg');
+                imagejpeg($image,$tmp_dir);
+
+                include base_path("vendor/autoload.php");
+                $pdf = new FPDI();
+                $pdf->AddPage();
+                $pdf->Image($tmp_dir,0,0);
+                $pdf->Output();
+            }
+
         }else{
             return $this->sendError([],'Document not signed');
         }
     }
-
 }
