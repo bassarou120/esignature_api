@@ -60,6 +60,7 @@ class NotifyDocSignedToDocAuthor implements ShouldQueue
 
             $mail->Subject = 'Document signé';
 
+            \Log::info($this->detail['doc_link']);
             $mail->Body   = str_replace(
                 array(
                     '[$sending_auth]',
@@ -71,7 +72,7 @@ class NotifyDocSignedToDocAuthor implements ShouldQueue
                 ),
                 file_get_contents(resource_path('views/mail_template/doc_signed_mail_view.blade.php'))
             );
-            $mail->addAttachment($this->detail['doc_title'], $this->detail['doc_link']);
+            $mail->addAttachment($this->detail['doc_link'],$this->detail['doc_title']);
 
             $envois =$mail->send();
             if($envois==false) {

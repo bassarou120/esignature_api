@@ -1574,57 +1574,6 @@ class SendingController extends BaseController
                     $fontSize = 12;
                     $widget=json_decode($send->configuration);
 
-                    //$folder =explode($doc->preview,'/')[0];
-
-                   /* $pdf = new FPDF();
-                    for($i=1;$i<=$nbre_page;$i++){
-                        $pdf->AddPage();
-
-                        foreach ($widget as $w){
-                            if($i==$w->page){
-                                if($w->type_widget=='signature'){
-                                    $index= $this->getAnswerWithWidget('signature',$all_answer);
-                                }
-                                else{
-                                    $index= $this->getAnswerWithWidget($w->widget_id,$all_answer);
-                                }
-                                header("Content-type: image/jpeg");
-                                $imgPath = public_path('previews/1665840282/'.$i.'jpeg');
-                                $image = imagecreatefromjpeg($imgPath);
-                                $color = imagecolorallocate($image, 0, 0, 0);
-
-                                if($w->type_widget !='certificat' && $w->type_widget !='image' && $w->type_widget !='signature'){
-                                    $string = $all_answer[$index]->value;
-
-                                    $x =$w->positionY ;
-                                    $y =$w->positionX ;
-
-                                    imagestring($image, $fontSize, $x, $y, $string, $color);
-                                    imagejpeg($image);
-
-                                    $pdf->Image($image,20,40,170,170);
-                                }
-                                else{
-                                    $tmp = public_path('/previews/tempimg.png');
-                                    $dataURI    = $all_answer[$index]->value;
-                                    $dataPieces = explode(',',$dataURI);
-                                    $encodedImg = $dataPieces[1];
-                                    $decodedImg = base64_decode($encodedImg);
-
-                                    if( $decodedImg!==false )
-                                    {
-                                        if( file_put_contents($tmp,$decodedImg)!==false )
-                                        {
-                                            $pdf->Image($tmp,$w->positionX*200/500, $w->positionY*200/500,(explode('px',$w->width)[0]*200/500),explode('px',$w->height)[0]*200/500);
-                                        }
-                                    }
-                                    unlink($tmp);
-                                }
-                            }
-                        }
-
-                    }*/
-
                     for($i=1;$i<=$nbre_page;$i++){
                        // return response()->json('start loop');
                         $pdf->AddPage();
@@ -1668,8 +1617,11 @@ class SendingController extends BaseController
                             }
                         }
                     }
+                    $doc_signed_path= public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signer.pdf');
 
-                    $pdf->Output(public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signer.pdf'),'F');
+                    $pdf->Output($doc_signed_path,'F');
+
+                    $this->generateProof_file($request->id_sending);
 
                     //send notification to author
                     $notif = new NotifyDocSignedToDocAuthor(
@@ -1677,14 +1629,13 @@ class SendingController extends BaseController
                             'email' => $send->email,
                             'doc_title' => $doc->title,
                             'sending_auth' => $send->name,
-                            'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
+                            'doc_link' => $doc_signed_path,
 
                         ]
                     );
 
                     $this->dispatch($notif);
 
-                    //send cc of document
                     $cc = Signataire::where('type','CC')->where('id_sending',$request->id_sending)->get();
                     if(!is_null($cc)){
                         foreach ($cc as $s) {
@@ -1696,7 +1647,7 @@ class SendingController extends BaseController
                                         'name' => $s['name'],
                                         'doc_title' => $doc->title,
                                         'sending_auth' => Auth::user()->name,
-                                        'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
+                                        'doc_link' => $doc_signed_path,
                                     ]
                                 ]
                             );
@@ -1713,8 +1664,6 @@ class SendingController extends BaseController
         return $this->sendResponse(new StatutSendingResource($statut), 'Sending statut updated successfully.');
 
     }
-
-
 
     public function validateDocument(Request $request){
         $input = $request->all();
@@ -1850,17 +1799,17 @@ class SendingController extends BaseController
                         }
                     }
                 }
-                $pdf->Output(public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signer.pdf'),'F');
+                $signed_doc_path=public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signer.pdf');
+                $pdf->Output($signed_doc_path,'F');
                 // return response()->json('stop');
-
+                //sleep(100);
                 //send notification to author
                 $notif = new NotifyDocSignedToDocAuthor(
                     [
                         'email' => $send->email,
                         'doc_title' => $doc->title,
                         'sending_auth' => $send->name,
-                        'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
-
+                        'doc_link' => $signed_doc_path,
                     ]
                 );
 
@@ -1878,7 +1827,7 @@ class SendingController extends BaseController
                                     'name' => $s['name'],
                                     'doc_title' => $doc->title,
                                     'sending_auth' => Auth::user()->name,
-                                    'doc_link' => public_path('/documents/'.explode('.pdf',$doc->file)[0].'_signed.pdf'),
+                                    'doc_link' => $signed_doc_path,
                                 ]
                             ]
                         );
@@ -1935,7 +1884,7 @@ class SendingController extends BaseController
         }catch (QueryException $e){
             return $this->sendError('Error while saving data');
         }
-        //}
+
     }
 
     public function downloadTheSignedFile($id_sending)
@@ -1967,57 +1916,67 @@ class SendingController extends BaseController
 
     }
 
-    public function downloadTheProofFile($id_sending)
-    {
+    private function generateProof_file($id_sending){
         $sending = Sending::join('type__signatures','sendings.id_type_signature','=','type__signatures.id')
             ->join('users','sendings.created_by','=','users.id')
             ->join('documents','sendings.id_document','=','documents.id')
             ->where('sendings.id',$id_sending)
             ->first(['sendings.*','type__signatures.type','users.name','users.email','documents.title','documents.file']);
         if($sending->statut==FINIR && $sending->type=='avanced' ){
-            $doc= Doc::find($sending->id_document);
+            $doc= Document::find($sending->id_document);
             $filePath = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_proof.pdf');
             if(!file_exists($filePath)){
-                header("Content-type: image/jpeg");
-                $imgPath = public_path('proof/tmp.jpeg');
-                $roboto =  public_path('proof/arial.ttf');
-                $roboto_bold =  public_path('proof/Roboto-Bold.ttf');
-                $image = imagecreatefromjpeg($imgPath);
-                $color = imagecolorallocate($image, 87, 87, 87);
-                $blue = imagecolorallocate($image, 41, 77, 135);
-                $green = imagecolorallocate($image, 157, 184, 139);
-
-                //email
-                imagettftext($image, 19, 0, 545, 450, $blue, $roboto_bold, $sending->email);
-                //Emetteur
-                imagettftext($image, 19, 0, 660, 692, $blue, $roboto_bold, $sending->name.' ('.$sending->email.')');
-                //Document
-                imagettftext($image, 19, 0, 660, 750, $blue, $roboto_bold, $sending->title.'.pdf');
-                //Size
-                imagettftext($image, 19, 0, 660, 808, $blue, $roboto_bold, (filesize(public_path('documents/'.$sending->file))/1000).' kB' );
-                //CRC du fichier
-                imagettftext($image, 19, 0, 660, 876, $color, $roboto_bold, '71e870c744474c0f5e27756c8dbb5e96' );
-                //CRC du fichier
-                imagettftext($image, 19, 0, 660, 935, $color, $roboto_bold, '1ffd36dc-88dc-444b-823a-7b900ea639b9' );
-                //Statut
-                imagettftext($image, 19, 0, 350, 1056, $green, $roboto_bold, 'COMPLÉTÉ' );
-                //Date
-                imagettftext($image, 19, 0, 1050, 1056, $color, $roboto_bold, c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('d/m/Y H:i:s'));
-                //Date
-                imagettftext($image, 19, 0, 1030, 1240, $color, $roboto_bold, c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('H:i:s').' le '.c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('d/m/Y'));
-                //***Date
-                imagettftext($image, 18, 0, 480, 1380, $color, $roboto_bold, '********************************');
-
-                $tmp_dir = public_path('/previews/test_proof.jpeg');
-                imagejpeg($image,$tmp_dir);
-
                 include base_path("vendor/autoload.php");
                 $pdf = new FPDI();
+                $pdf->setSourceFile(public_path('proof/template.pdf'));
+                $pdf->SetFontSize(9);
+                $pdf->SetFont('Helvetica');
                 $pdf->AddPage();
-                $pdf->Image($tmp_dir,0,0);
-                $pdf->Output();
-            }
+                $template_1= $pdf->importPage(1);
+                $pdf->useTemplate($template_1,
+                    [
+                        'adjustPageSize' => true,
+                        'width'=>'205'
+                    ]);
+                $pdf->SetTextColor(87,87,87);
+                //email
+                $pdf->SetXY(65, 55);
+                $pdf->Write(0, $sending->email);
+                //Emetteur
+                $pdf->SetXY(85, 85);
+                $pdf->Write(0, $sending->name.' ('.$sending->email.')');
+                //Document
+                $pdf->SetXY(85, 92.5);
+                $pdf->Write(0, $sending->title.'.pdf');
+                //Size
+                $pdf->SetXY(85, 100.5);
+                $pdf->Write(0, (filesize(public_path('documents/'.$sending->file))/1000).' kB');
+                //CRC du fichier
+                $pdf->SetXY(85, 107);
+                $pdf->Write(0, '71e870c744474c0f5e27756c8dbb5e96');
+                //... du fichier
+                $pdf->SetXY(85, 114.7);
+                $pdf->Write(0, '1ffd36dc-88dc-444b-823a-7b900ea639b9');
+                //Statut
+                $pdf->SetXY(50, 130);
+                $pdf->SetTextColor(0,255,0);
+                $pdf->Write(0, 'COMPLETE');
+                //Date
+                $pdf->SetXY(130, 130);
+                $pdf->Write(0, c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('d/m/Y H:i:s'));
+                //Date
+                $pdf->SetTextColor(87,87,87);
+                $pdf->SetXY(125, 152.5);
+                $pdf->Write(0, c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('H:i:s').' le '.c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('d/m/Y'));
+                //*****
+                $pdf->SetXY(61, 170.5);
+                $pdf->Write(0, '********************************');
 
+                $doc_signed_path= public_path('/documents/'.explode('.pdf',$doc->file)[0].'_proof.pdf');
+
+                $pdf->Output($doc_signed_path,'F');
+
+            }
         }else{
             return $this->sendError([],'Document not signed');
         }

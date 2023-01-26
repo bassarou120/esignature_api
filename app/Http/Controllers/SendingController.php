@@ -23,6 +23,7 @@ use App\Http\Resources\Signataire as SignataireResource;
 use App\Http\Resources\StatutSending as StatutSendingResource;
 use Mpdf\Mpdf;
 use PHPMailer\PHPMailer\PHPMailer;
+use PhpParser\Comment\Doc;
 use setasign\Fpdi\Fpdi;
 
 //use PhpOffice\PhpSpreadsheet\Writer\Pdf\Mpdf;
@@ -67,8 +68,75 @@ class SendingController extends Controller
 
     }
 
-
     public function test_for_doc(){
+        $sending = Sending::join('type__signatures','sendings.id_type_signature','=','type__signatures.id')
+            ->join('users','sendings.created_by','=','users.id')
+            ->join('documents','sendings.id_document','=','documents.id')
+            ->where('sendings.id',282)
+            ->first(['sendings.*','type__signatures.type','users.name','users.email','documents.title','documents.file']);
+        if($sending->statut==FINIR && $sending->type=='avanced' ){
+            $doc= Document::find($sending->id_document);
+            $filePath = public_path('/documents/'.explode('.pdf',$doc->file)[0].'_proof.pdf');
+            if(!file_exists($filePath)){
+                include base_path("vendor/autoload.php");
+                $pdf = new FPDI();
+                $pdf->setSourceFile(public_path('proof/template.pdf'));
+                $pdf->SetFontSize(9);
+                $pdf->SetFont('Helvetica');
+                $pdf->AddPage();
+                $template_1= $pdf->importPage(1);
+                $pdf->useTemplate($template_1,
+                    [
+                        'adjustPageSize' => true,
+                        'width'=>'205'
+                    ]);
+                $pdf->SetTextColor(87,87,87);
+                //email
+                $pdf->SetXY(65, 55);
+                $pdf->Write(0, $sending->email);
+                //Emetteur
+                $pdf->SetXY(85, 85);
+                $pdf->Write(0, $sending->name.' ('.$sending->email.')');
+                //Document
+                $pdf->SetXY(85, 92.5);
+                $pdf->Write(0, $sending->title.'.pdf');
+                //Size
+                $pdf->SetXY(85, 100.5);
+                $pdf->Write(0, (filesize(public_path('documents/'.$sending->file))/1000).' kB');
+                //CRC du fichier
+                $pdf->SetXY(85, 107);
+                $pdf->Write(0, '71e870c744474c0f5e27756c8dbb5e96');
+                //... du fichier
+                $pdf->SetXY(85, 114.7);
+                $pdf->Write(0, '1ffd36dc-88dc-444b-823a-7b900ea639b9');
+                //Statut
+                $pdf->SetXY(50, 130);
+                $pdf->SetTextColor(0,255,0);
+                $pdf->Write(0, 'COMPLETE');
+                //Date
+                $pdf->SetXY(130, 130);
+                $pdf->Write(0, c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('d/m/Y H:i:s'));
+                //Date
+                $pdf->SetTextColor(87,87,87);
+                $pdf->SetXY(125, 152.5);
+                $pdf->Write(0, c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('H:i:s').' le '.c::createFromFormat('Y-m-d H:i:s', $sending->updated_at)->format('d/m/Y'));
+                //*****
+                $pdf->SetXY(61, 170.5);
+                $pdf->Write(0, '********************************');
+
+                // $doc_signed_path= public_path('/documents/'.explode('.pdf',$doc->file)[0].'_proof.pdf');
+                $doc_signed_path= public_path('/proof/t.pdf');
+
+                $pdf->Output();
+
+            }
+
+        }else{
+            return $this->sendError([],'Document not signed');
+        }
+    }
+
+    public function test_for_doc1(){
         require base_path("vendor/autoload.php");
         $mpdf = new mPDF();
 
