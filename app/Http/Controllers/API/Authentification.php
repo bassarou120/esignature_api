@@ -14,26 +14,45 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Resources\User as UserResource;
+use PHPUnit\Util\Json;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
 class Authentification extends BaseController
 {
     public function Login(Request $request){
+
+
+
+
+
         $validator = Validator::make($request->all(), [
             'email' => 'required|string|email|max:255',
             'password' => 'required|string|min:8',
         ]);
+
         if ($validator->fails())
         {
             return response(['errors'=>$validator->errors()->all()], 422);
         }
+
+
         $user = new \App\Models\User();
         $check = $user->where('email',$request->email)->exists();
+
         if ($check) {
             $users = $user->where('email',$request->email)->first();
+
             if (Hash::check($request->password, $users->password)) {
+
+
                 if ($users->email_verified_at !=null){
+
                     config(['auth.guards.api.provider' => 'user']);
-                    $token = $users->createToken('ESIG-Dine-07',['user'])->accessToken;
+
+                   $token = $users->createToken('ESIG-Dine-07',['user'])->accessToken;
+
+
+
                     $users=[
                         'id' => $users->id,
                         'name' => $users->name,
@@ -45,6 +64,8 @@ class Authentification extends BaseController
                         'updated_at' => $users->updated_at,
                         'token' => $token,
                     ];
+
+
                     return response()->json(['success'=>true,'message'=>'User account login successfully.','data' => $users],200);
                 }
                 else{
@@ -53,14 +74,18 @@ class Authentification extends BaseController
                 }
 
             } else {
-                $response = ["message" => "Incorrect identifiers"];
+                $response = ["message" => "Incorrect"];
                 return response($response, 422);
             }
+
+
         } else {
             $response = ["message" =>'Incorrect identifiers'];
             return response($response, 422);
         }
     }
+
+
 
     public function Register(Request $request){
         $validator = Validator::make($request->all(), [
@@ -104,8 +129,7 @@ class Authentification extends BaseController
             $encryption_iv
         );
         $t = base64_encode($request->email);
-        Notification::route('mail', $user->email)
-            ->notify(new NewRegistration($t));
+        Notification::route('mail', $user->email)->notify(new NewRegistration($t));
 
         return $this->sendResponse(new UserResource($user), 'User register successfully.');
     }
@@ -130,6 +154,8 @@ class Authentification extends BaseController
            return  $this->sendError('Unknown email adress',[]);
         }
     }
+
+
 
     protected function sendResetLinkResponse(Request $request)
     {

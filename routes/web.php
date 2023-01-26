@@ -32,6 +32,12 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+Route::get('migrate', function() {
+    \Illuminate\Support\Facades\Artisan::call('migrate:fresh -—seed');
+});
+
+
+
 Route::get('/', function () {
     return view('auth.login');
 })->name('/')

@@ -47,6 +47,10 @@ class SendingController extends BaseController
      */
     public function index(Request $request)
     {
+
+
+
+
         $sending = Sending::orderBy('id', 'DESC')->get();
 
         if ($request->ajax()) {
@@ -74,6 +78,7 @@ class SendingController extends BaseController
         }
 
         return $this->sendResponse(SendingResource::collection($sending), 'Sending retrieved successfully.');
+
 
     }
 
@@ -206,52 +211,73 @@ class SendingController extends BaseController
      */
     public function store(Request $request)
     {
+
+
+
+
         $input = $request->all();
 
-        $validator = Validator::make($input, [
-            'id_type_signature' => 'required|numeric',
-            'model_id' => "nullable|numeric",
-            'document' => "required_if:model_id,==,0|nullable|mimes:pdf|max:10000",
-            'register_as_model' => "required|numeric",
-        ]);
 
-        $fieldNames = array(
-            'id_type_signature' => 'Type de signature',
-            'document' => 'Document'
-        );
 
-        $validator->setAttributeNames($fieldNames);
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors(), 400);
-        }
 
-        if ($request->model_id != 0) {
-            $send = Sending::find($request->model_id);
-            $newSending = $send->replicate();
-            $newSending->created_at = Carbon::now();
-            $newSending->updated_at = Carbon::now();
-            $newSending->register_as_model=0;
 
-            $document = Document::find($send->id_document);
-            $folder = explode('/', $document->preview)[0];
-            $this->custom_copy(public_path('/previews/'.$folder),public_path('/previews/'.time()));
+       $validator = Validator::make($input, [
+           'id_type_signature' => 'required|numeric',
+           'model_id' => "nullable|numeric",
+           'document' => "required_if:model_id,==,0|nullable|mimes:pdf|max:10000",
+           'register_as_model' => "required|numeric",
+       ]);
 
-            $newDocument = $document->replicate();
-            $newDocument->created_at = Carbon::now();
-            $newDocument->updated_at = Carbon::now();
 
-            $newDocument->save();
-            $newSending->id_document = $newDocument->id;
-            $newSending->save();
-            return $this->sendResponse(new SendingResource($newSending), 'Sending created successfully.');
 
-        }else{
-            if ($request->hasFile('document')) {
-                $doc = $request->file('document');
-                $title = pathinfo($doc->getClientOriginalName(), PATHINFO_FILENAME);
-                //$imageName1 = $doc->getClientOriginalName();
-                $time =time();
-                $imageName1 = $time.'.pdf';
+      $fieldNames = array(
+          'id_type_signature' => 'Type de signature',
+          'document' => 'Document'
+      );
+
+
+     $validator->setAttributeNames($fieldNames);
+
+      if ($validator->fails()) {
+          return $this->sendError('Validation Error.', $validator->errors(), 400);
+      }
+
+
+      if ($request->model_id != 0) {
+          $send = Sending::find($request->model_id);
+          $newSending = $send->replicate();
+          $newSending->created_at = Carbon::now();
+          $newSending->updated_at = Carbon::now();
+          $newSending->register_as_model=0;
+
+          $document = Document::find($send->id_document);
+          $folder = explode('/', $document->preview)[0];
+          $this->custom_copy(public_path('/previews/'.$folder),public_path('/previews/'.time()));
+
+          $newDocument = $document->replicate();
+          $newDocument->created_at = Carbon::now();
+          $newDocument->updated_at = Carbon::now();
+
+          $newDocument->save();
+          $newSending->id_document = $newDocument->id;
+          $newSending->save();
+          return $this->sendResponse(new SendingResource($newSending), 'Sending created successfully.');
+
+      }
+
+      else{
+
+
+          if ($request->hasFile('document')) {
+
+
+              $doc = $request->file('document');
+              $title = pathinfo($doc->getClientOriginalName(), PATHINFO_FILENAME);
+              //$imageName1 = $doc->getClientOriginalName();
+              $time =time();
+              $imageName1 = $time.'.pdf';
+
+
 
 //                if(file_exists(public_path('documents').'/'.$imageName1)){
 //                    $imageName1 = $title.'_'.time().'.pdf';
@@ -260,57 +286,76 @@ class SendingController extends BaseController
 //                else{
 //                    $cp_name= $title.'_copy.pdf';
 //                }
-                $cp_name= $time.'_copy.pdf';
-                $doc->move(public_path('documents'), $imageName1);
-                copy(public_path('documents').'/'.$imageName1,public_path('documents').'/'.$cp_name);
-               // $doc->move(public_path('documents'), $cp_name);
+              $cp_name= $time.'_copy.pdf';
+              $doc->move(public_path('documents'), $imageName1);
+              copy(public_path('documents').'/'.$imageName1,public_path('documents').'/'.$cp_name);
+             // $doc->move(public_path('documents'), $cp_name);
 
-                //$pdf = new Spatie\PdfToImage\Pdf();
-                $pdf = new Spatie(public_path('documents') . '/' . $imageName1);
-                $nbre_page = $pdf->getNumberOfPages();
-                $preview_name = $title . time();
-                $t = $time;
-                for ($i = 1; $i <= $nbre_page; $i++) {
-                    $pdf->setPage($i);
-                    Storage::makeDirectory(public_path('/previews/' . $t));
-                    $p = public_path('/previews/' . $t);
-                    if (!is_dir($p)) {
-                        mkdir($p);
-                    }
-                    $pdf->saveImage(public_path('previews/' . $t . '/' . $i . '.jpeg'));
-                }
 
-                try {
-                    $document = Document::create([
-                        'title' => $title,
-                        'file' => $imageName1,
-                        'preview' => $t . '/1.jpeg',
-                        'is_signed' => 0,
-                        'nbre_page' => $nbre_page,
-                        'id_user' => Auth::id()
-                    ]);
 
-                    $input['created_by'] = Auth::id();
-                    $input['id_document'] = $document->id;
-                    $input['is_registed'] = 0;
-                    $input['register_as_model'] = $request->register_as_model;
-                    $input['statut'] = EN_COURS;
+//               $pdf = new Spatie\PdfToImage\Pdf(public_path('documents') . '/' . $imageName1);
+             $pdf = new Spatie(public_path('documents') . '/' . $imageName1);
 
-                    try {
-                        $send = Sending::create($input);
-                    } catch (QueryException $e) {
-                        return $this->sendError('Database error', $validator->errors(), 500);
-                    }
+              $nbre_page = $pdf->getNumberOfPages();
 
-                } catch (QueryException $e) {
-                    return $this->sendError('Database error while saving document', $validator->errors(), 500);
-                }
-                return $this->sendResponse(new SendingResource($send), 'Sending created successfully.');
-            } else {
-                return $this->sendError('No file', [], 400);
-            }
-        }
+              return response()->json($nbre_page );
+              $preview_name = $title . time();
+              $t = $time;
 
+              for ($i = 1; $i <= $nbre_page; $i++) {
+
+                  $pdf->setPage($i);
+
+                  Storage::makeDirectory(public_path('/previews/' . $t));
+
+                  $p = public_path('/previews/' . $t);
+
+                  if (!is_dir($p)) {
+                      mkdir($p);
+                  }
+
+
+
+               $pdf->saveImage(public_path('previews/' . $t . '/' . $i . '.jpeg'));
+
+
+              }
+
+
+
+
+              try {
+                  $document = Document::create([
+                      'title' => $title,
+                      'file' => $imageName1,
+                      'preview' => $t . '/1.jpeg',
+                      'is_signed' => 0,
+                      'nbre_page' => $nbre_page,
+                      'id_user' => Auth::id()
+                  ]);
+
+                  $input['created_by'] = Auth::id();
+                  $input['id_document'] = $document->id;
+                  $input['is_registed'] = 0;
+                  $input['register_as_model'] = $request->register_as_model;
+                  $input['statut'] = EN_COURS;
+
+                  try {
+                      $send = Sending::create($input);
+                  } catch (QueryException $e) {
+                      return $this->sendError('Database error', $validator->errors(), 500);
+                  }
+
+              } catch (QueryException $e) {
+                  return $this->sendError('Database error while saving document', $validator->errors(), 500);
+              }
+              return $this->sendResponse(new SendingResource($send), 'Sending created successfully.');
+          } else {
+              return $this->sendError('No file', [], 400);
+          }
+      }
+        /*
+             */
 
     }
 
