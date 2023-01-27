@@ -76,8 +76,10 @@ class Authentification extends BaseController
             return $this->sendError('Validation Error.', $validator->errors());
         }
         $input = $request->all();
+        echo 'validation';
         $input['password'] = bcrypt($input['password']);
         $user = User::create($input);
+        echo 'user created';
 
         if(isset($request->member_id)){
             if($request->member_id !=''){
@@ -85,6 +87,7 @@ class Authentification extends BaseController
              $member->membre=$user->id;
              $member->save();
             }
+            echo 'member created';
         }
 
         $ciphering = "AES-128-CTR";
@@ -104,9 +107,11 @@ class Authentification extends BaseController
             $encryption_iv
         );
         $t = base64_encode($request->email);
+        echo 'b64 encoding';
         Notification::route('mail', $user->email)
             ->notify(new NewRegistration($t));
 
+        echo 'notify';
         return $this->sendResponse(new UserResource($user), 'User register successfully.');
     }
 
