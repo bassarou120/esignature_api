@@ -63,7 +63,6 @@ class Authentification extends BaseController
     }
 
     public function Register(Request $request){
-        dd('hhh');
         $validator = Validator::make($request->all(), [
             'name' => 'required|string',
             'email' => 'required|email|unique:users,email',
