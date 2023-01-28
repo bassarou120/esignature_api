@@ -14,7 +14,7 @@ class SendingWidget extends Seeder
      */
     public function run()
     {
-        DB::table('type__signatures')->insert([
+        DB::table('sending__parameters')->insert([
             [
                 'name' => 'signature',
                 'label' => 'Signature',
